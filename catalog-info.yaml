@@ -3,10 +3,10 @@ kind: Component
 metadata:
   name: image-mode-operational-updates
   title: image-mode-operational-updates
-  description: in this lab, you will learn how to manage updates for your image
-    mode hosts.  You will start with a running bootc host, and the
-    infrastructure to build a new bootc image, push it, and manage its automatic
-    updates via the systemd bootc update service.
+  description: in this lab, you will learn how to manage updates for your image mode
+    hosts.  You will start with a running bootc host, and the infrastructure to build
+    a new bootc image, push it, and manage its automatic updates via the systemd bootc
+    update service.
   annotations:
     ph.rhdp.io/content-type: lab
     ph.rhdp.io/deployment-mode: rhdp_published
@@ -14,21 +14,24 @@ metadata:
     ph.rhdp.io/owner: nlager@redhat.com
     backstage.io/techdocs-ref: dir:.
     github.com/project-slug: rhpds/image-mode-operational-updates
-    ph.rhdp.io/created-at: 2026-09-15T19:23:30.384Z
+    ph.rhdp.io/created-at: 2026-09-15 19:23:30.384000+00:00
   tags:
-    - publishing-house
-    - lab
-    - rhdp-published
+  - publishing-house
+  - lab
+  - rhdp-published
   links:
-    - url: https://github.com/rhpds/image-mode-operational-updates
-      title: Repository
-      icon: github
-    - url: https://devspaces.apps.ocpv-infra02.wdc07.infra.demo.redhat.com#https://github.com/rhpds/image-mode-operational-updates
-      title: Open in DevSpaces
-      icon: catalog
-    - url: https://central-api-publishing-house.apps.ocpv-infra02.wdc07.infra.demo.redhat.com
-      title: Central
-      icon: dashboard
+  - url: https://github.com/rhpds/image-mode-operational-updates
+    title: Repository
+    icon: github
+  - url: https://devspaces.apps.ocpv-infra02.wdc07.infra.demo.redhat.com#https://github.com/rhpds/image-mode-operational-updates
+    title: Open in DevSpaces
+    icon: catalog
+  - url: https://central-api-publishing-house.apps.ocpv-infra02.wdc07.infra.demo.redhat.com
+    title: Central
+    icon: dashboard
+  - url: https://redhat.atlassian.net/browse/RHDPCD-1661
+    title: Jira Epic
+    icon: dashboard
 spec:
   type: content
   lifecycle: experimental

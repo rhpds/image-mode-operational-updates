@@ -16,8 +16,8 @@ project:
   automation_type: "ansible"
   description: "in this lab, you will learn how to manage updates for your image mode hosts.  You will start with a running bootc host, and the infrastructure to build a new bootc image, push it, and manage its automatic updates via the systemd bootc update service."
   # content_reviewer_email and infra_reviewer_email are assigned by the RHDP team — not set by the author
-  jira_ticket: ""
-  workflow_id: ""
+  jira_ticket: "RHDPCD-1661"
+  workflow_id: "5a0e202c-bdb1-407a-ab1c-86910532ccfe"
 
 spec:
   title: ""
