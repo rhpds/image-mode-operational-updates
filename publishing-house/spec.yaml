@@ -101,8 +101,16 @@ approval_checklist:
     prerequisites_verifiable: false
     assessment_strategy: ""
     catalog_gap: "Intended to replace the existing 'Day 2 operations with image mode' lab and supersede/extend 'Introduction to image mode' with newer content. While the catalog covers building/pushing bootc images and rollback, no existing lab covers the native automatic update workflow — configuring and observing the bootc-fetch-apply-updates systemd timer — which is this lab's centerpiece. Its tight ~20-minute single-host focus on the update -> auto-apply -> rollback loop is also more targeted than the broader existing labs."
-    design_overview: ""
-    module_summaries: []
+    design_overview: "An intermediate, ~20-minute hands-on lab teaching the operational update lifecycle for RHEL image mode (bootc) hosts. Starting from a running bootc host with build tooling and registry access, RHEL sysadmins build and push an updated image, configure hands-off delivery via the bootc-fetch-apply-updates systemd timer, and roll back to a prior image after a failed update. The timer-driven automatic update workflow is the lab's distinguishing focus versus existing image mode catalog content."
+    module_summaries:
+    - title: "Introduction to Image Mode Updates"
+      overview: "Sets context for how image mode changes the update workflow from in-place patching to image build/push/apply, and orients the learner to the bootc host and lab environment. No changes are made; the learner inspects the current image with bootc status."
+    - title: "Build and Push an Updated Image"
+      overview: "The learner builds an updated bootc image from the provided Containerfile with Podman and pushes it to a container registry. A validate button confirms the image was built and successfully pushed."
+    - title: "Configure Automatic Updates"
+      overview: "The learner enables and observes the bootc-fetch-apply-updates systemd timer so the host automatically fetches and applies the published image. A validate button confirms the timer is enabled and active."
+    - title: "Roll Back a Failed Update"
+      overview: "The learner responds to a problematic update by rolling the host back to its previous image with bootc rollback and verifies the prior deployment is booted. A validate button confirms the rollback succeeded."
     rcars_overlap_pct: 87
     rcars_top_matches:
     - title: "Day 2 operations with image mode for Red Hat Enterprise Linux"
