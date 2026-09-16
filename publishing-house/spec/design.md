@@ -67,30 +67,32 @@ Intermediate
 
 ## Environment
 
-**Learner view:** A single running RHEL image mode (bootc) host, provisioned from
-a base bootc image, with the build tooling present on the host (a Containerfile
-and Podman) and access to a container registry to push updated images to. The
-learner works entirely from the host's terminal.
+**Learner view:** A single RHEL package mode host that runs nested
+virtualization. Inside it runs the RHEL image mode (bootc) host as a guest VM —
+this is the host the learner updates and rolls back. A local container registry
+also runs on the package mode host and is the target for pushed images, so the
+update loop is fully self-contained. The build tooling (a Containerfile and
+Podman) is present, and the learner works from the terminal.
 
 **Automation needed:** Yes
 
-Setup automation must provision the bootc host from a base image, place the
-Containerfile and any supporting build files, ensure Podman and registry
-credentials are ready, and confirm the host is booted and reporting its current
-image via `bootc status`.
+Setup automation must provision the RHEL package mode host, enable nested
+virtualization, stand up the local container registry, create and boot the bootc
+guest VM from a base bootc image, place the Containerfile and supporting build
+files, ensure Podman and registry credentials are ready, and confirm the bootc
+guest is booted and reporting its current image via `bootc status`.
 
 ## Infrastructure Requirements
 
-- **Cloud provider:** TBD — confirmed in infrastructure phase
-- **Cluster type:** TBD — confirmed in infrastructure phase
-- **OCP version:** TBD — confirmed in infrastructure phase
-- **Topology:** TBD — confirmed in infrastructure phase
-- **Sizing:** TBD — confirmed in infrastructure phase
-- **Automation approach:** TBD — confirmed in infrastructure phase
-- **AI/MaaS:** TBD — confirmed in infrastructure phase
-- **External services:** TBD — confirmed in infrastructure phase
-- **AAP version:** TBD — confirmed in infrastructure phase
-- **Non-GA products:** TBD — confirmed in infrastructure phase
+- **Platform:** RHEL VMs
+- **Cloud provider:** CNV (nested virtualization required — infra review to confirm a nested-virt-capable base CI, or a bare-metal/Troshka flavor if that matches prior image mode labs)
+- **Topology:** Per-student
+- **Sizing:** 1 RHEL package mode host per student — 8 vCPU, 32 GB RAM, 150 GB disk. Runs nested virtualization: the bootc host runs as a guest VM, and the local container registry runs on the same host. Sized for the nested guest, registry, and multiple bootc image versions.
+- **Automation approach:** Ansible
+- **AI/MaaS:** None
+- **External services:** `registry.redhat.io` (base bootc image), `cdn.redhat.com` (RHEL package repos for build-time RPM layering). The update registry is local to the host, so no external push egress is required.
+- **AAP version:** N/A (AAP not used)
+- **Non-GA products:** None (RHEL image mode is GA)
 
 ## Assessment Strategy (Optional)
 
