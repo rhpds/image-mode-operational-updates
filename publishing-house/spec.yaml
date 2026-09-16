@@ -110,7 +110,7 @@ approval_checklist:
 
   content:
     prerequisites_verifiable: false
-    assessment_strategy: ""
+    assessment_strategy: "Zero-Touch guided lab with a validate button per hands-on module. Module 2 verifies the updated image was built and pushed to the local registry; Module 3 verifies the bootc-fetch-apply-updates.timer is enabled and active; Module 4 verifies bootc status reports the prior deployment as booted after rollback. Module 1 is introductory with no validation."
     catalog_gap: "Intended to replace the existing 'Day 2 operations with image mode' lab and supersede/extend 'Introduction to image mode' with newer content. While the catalog covers building/pushing bootc images and rollback, no existing lab covers the native automatic update workflow — configuring and observing the bootc-fetch-apply-updates systemd timer — which is this lab's centerpiece. Its tight ~20-minute single-host focus on the update -> auto-apply -> rollback loop is also more targeted than the broader existing labs."
     design_overview: "An intermediate, ~20-minute hands-on lab teaching the operational update lifecycle for RHEL image mode (bootc) hosts. Starting from a running bootc host with build tooling and registry access, RHEL sysadmins build and push an updated image, configure hands-off delivery via the bootc-fetch-apply-updates systemd timer, and roll back to a prior image after a failed update. The timer-driven automatic update workflow is the lab's distinguishing focus versus existing image mode catalog content."
     module_summaries:
