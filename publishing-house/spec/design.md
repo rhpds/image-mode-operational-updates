@@ -36,7 +36,7 @@ image after a problematic update.
 
 1. Build an updated bootc image and push it to a container registry
 2. Configure automatic updates on a bootc host using the `bootc-fetch-apply-updates` systemd timer
-3. Roll back a bootc host to its previous image after a failed update
+3. Troubleshoot a failed update by rolling a bootc host back to its previous image
 
 ## Content Type
 

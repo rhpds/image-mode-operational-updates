@@ -24,7 +24,7 @@ spec:
   learning_objectives:
     - "Build an updated bootc image and push it to a container registry"
     - "Configure automatic updates using the bootc-fetch-apply-updates systemd timer"
-    - "Roll back a bootc host to its previous image after a failed update"
+    - "Troubleshoot a failed update by rolling a bootc host back to its previous image"
   modules:                 # [{id, title, duration_min}] — written by intake Phase 4; id is stable (e.g. module-01)
   - id: module-01
     title: "Introduction to Image Mode Updates"
