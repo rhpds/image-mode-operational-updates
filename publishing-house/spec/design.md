@@ -1,89 +1,104 @@
-# [Project Title]
-
-<!-- This file is the design document for your lab or demo. -->
-<!-- Fill in each section below, or run /rhdp-publishing-house to have the intake skill help. -->
-<!-- Sections marked with [brackets] are placeholders — replace with real content. -->
-<!-- The validation gate checks for all required sections before submission. -->
+# Managing Updates for RHEL Image Mode Hosts
 
 ## Overview
 
-[2-3 sentences on what this lab or demo is and why it exists. Then a direct description of what participants will do — specific enough that someone reading this section immediately understands the content without interpretation. No flowery language. Example: "Participants will deploy a 3-tier application on OpenShift, configure autoscaling, and troubleshoot a simulated pod failure."]
+RHEL image mode delivers the operating system as a bootc container image, so
+updating a host means building a new image, pushing it to a registry, and letting
+the host pull and apply it — with a clean rollback path if something goes wrong.
+This lab teaches that operational update lifecycle end to end.
+
+Participants start with a running bootc host and the infrastructure to build and
+publish images. They will build an updated bootc image and push it to a registry,
+configure the host to fetch and apply updates automatically via the
+`bootc-fetch-apply-updates` systemd timer, and roll the host back to its previous
+image after a problematic update.
 
 ## Target Audience
 
-- **Role:** [Data scientists, platform engineers, developers, etc.]
-- **Experience level:** [Beginner, intermediate, or advanced]
-- **What they already know:** [Existing skills and knowledge]
-- **What they don't know:** [Skills this lab teaches]
+- **Role:** RHEL system administrators and platform operators
+- **Experience level:** Intermediate
+- **What they already know:** RHEL command line, systemd units and timers, and
+  basic container/Podman concepts
+- **What they don't know:** How image mode (bootc) changes the update workflow —
+  building and publishing OS images, automatic update delivery, and image-based
+  rollback
 
 ## Prerequisites
 
-- [What the learner must know or have completed before starting]
-- [Can the lab validate these automatically? Yes/No — brief explanation]
+- Comfort with the RHEL command line and `sudo`
+- Basic understanding of systemd services and timers
+- Basic familiarity with container images and registries
+- No prior image mode / bootc experience required
 
-<!-- If no prerequisites, write "None" -->
+<!-- Prerequisites are assumed knowledge, verified by trust — the lab does not run an automated skills check. -->
 
 ## Learning Objectives
 
-1. [Action verb] [specific, measurable outcome]
-2. [Action verb] [specific, measurable outcome]
-3. [Action verb] [specific, measurable outcome]
-
-<!-- Scale to duration: up to 3 objectives per 45 min of content. Start with action verbs: Configure, Deploy, Create, Implement, Troubleshoot, Monitor, Scale. Each should be testable. NOT: Understand, Learn, Know. -->
+1. Build an updated bootc image and push it to a container registry
+2. Configure automatic updates on a bootc host using the `bootc-fetch-apply-updates` systemd timer
+3. Roll back a bootc host to its previous image after a failed update
 
 ## Content Type
 
-[Lab (hands-on) or Demo (presenter-led)]
+Lab (hands-on)
 
 ## Products & Technologies
 
-- [Official Red Hat product name with version if relevant]
-- [Additional products/technologies]
+- Red Hat Enterprise Linux (image mode / bootc)
+- Podman (container build and push)
 
-<!-- Use official names: "Red Hat OpenShift", not "OpenShift". List upstream projects separately. -->
+Upstream project: bootc
 
 ## Module Map
 
 | Module | Title | Duration |
 |--------|-------|----------|
-| 1 | [Module title] | [XX min] |
-| 2 | [Module title] | [XX min] |
-| — | **Total hands-on** | **[X hours]** |
-| — | Intro / presentation | [~XX min] |
-| — | **Total lab** | **[~X hours]** |
-
-<!-- Each module 10-30 min. Total: lab 1-4 hours, demo 15-45 min. Modules should build on each other. -->
+| 1 | Introduction to Image Mode Updates | ~3 min |
+| 2 | Build and Push an Updated Image | ~6 min |
+| 3 | Configure Automatic Updates | ~6 min |
+| 4 | Roll Back a Failed Update | ~5 min |
+| — | **Total hands-on** | **~17 min** |
+| — | Intro / presentation | ~3 min |
+| — | **Total lab** | **~20 min** |
 
 ## Difficulty Level
 
-[Beginner, Intermediate, or Advanced]
+Intermediate
 
 ## Environment
 
-**Learner view:** [What exists when the lab starts — pre-deployed resources, what participants see and interact with. Be specific about cluster details.]
+**Learner view:** A single running RHEL image mode (bootc) host, provisioned from
+a base bootc image, with the build tooling present on the host (a Containerfile
+and Podman) and access to a container registry to push updated images to. The
+learner works entirely from the host's terminal.
 
-**Automation needed:** [Yes/No]
+**Automation needed:** Yes
 
-[If yes, list what automation must provision — operators, per-user resources, sample apps, data sets.]
+Setup automation must provision the bootc host from a base image, place the
+Containerfile and any supporting build files, ensure Podman and registry
+credentials are ready, and confirm the host is booted and reporting its current
+image via `bootc status`.
 
 ## Infrastructure Requirements
 
-- **Cloud provider:** [CNV (default), AWS, or Troshka (bare-metal/nested virt)]
-- **Cluster type:** [Multinode or SNO (Single Node OpenShift)]
-- **OCP version:** [e.g. 4.20 — minimum 4.20]
-- **Topology:** [Shared cluster, per-student, or CNV pool]
-- **Sizing:** [Node types and counts with resources — e.g., "3 control plane (16 CPU, 64GB RAM), 6 workers (8 CPU, 32GB RAM, 100GB disk)"]
-- **Automation approach:** [Ansible, GitOps (Helm + ArgoCD), or combo]
-- **AI/MaaS:** [None, MaaS (open-source model), MaaS (frontier model), or dedicated GPU — include justification if not "none"]
-- **External services:** [Named services — e.g., github.com, registry.access.redhat.com — or "None"]
-- **AAP version:** [e.g. 2.5 — only if AAP is in products; omit otherwise]
-- **Non-GA products:** [Product name + version, with access plan — or "None (all products are GA)"]
-
-<!-- Not all fields must be known at intake. "TBD, estimating ~X" is fine. -->
+- **Cloud provider:** TBD — confirmed in infrastructure phase
+- **Cluster type:** TBD — confirmed in infrastructure phase
+- **OCP version:** TBD — confirmed in infrastructure phase
+- **Topology:** TBD — confirmed in infrastructure phase
+- **Sizing:** TBD — confirmed in infrastructure phase
+- **Automation approach:** TBD — confirmed in infrastructure phase
+- **AI/MaaS:** TBD — confirmed in infrastructure phase
+- **External services:** TBD — confirmed in infrastructure phase
+- **AAP version:** TBD — confirmed in infrastructure phase
+- **Non-GA products:** TBD — confirmed in infrastructure phase
 
 ## Assessment Strategy (Optional)
 
-<!-- Optional — skip this section for demos or classic labs without verification. -->
-<!-- Relevant for Zero-Touch labs with solve/validate buttons or labs with automated checks. -->
+This is a Zero-Touch guided lab, so each hands-on module ships with a validate
+button backed by a verification script:
 
-[If applicable: how will we know the learner successfully completed each module? Per module: verification script, solve/validate button, visible result in the UI, or automated check.]
+- **Module 2:** Verify the updated image was built and successfully pushed to the registry.
+- **Module 3:** Verify the `bootc-fetch-apply-updates.timer` is enabled and active.
+- **Module 4:** Verify the host has rolled back to the previous image (`bootc status` reports the prior deployment as booted).
+
+Module 1 is introductory and has no validation.

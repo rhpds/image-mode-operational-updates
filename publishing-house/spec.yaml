@@ -21,8 +21,27 @@ project:
 
 spec:
   title: "Managing Updates for RHEL Image Mode Hosts"
-  learning_objectives: []
-  modules: []              # [{id, title, duration_min}] — written by intake Phase 4; id is stable (e.g. module-01)
+  learning_objectives:
+    - "Build an updated bootc image and push it to a container registry"
+    - "Configure automatic updates using the bootc-fetch-apply-updates systemd timer"
+    - "Roll back a bootc host to its previous image after a failed update"
+  modules:                 # [{id, title, duration_min}] — written by intake Phase 4; id is stable (e.g. module-01)
+  - id: module-01
+    title: "Introduction to Image Mode Updates"
+    duration_min: 3
+    status: not_started
+  - id: module-02
+    title: "Build and Push an Updated Image"
+    duration_min: 6
+    status: not_started
+  - id: module-03
+    title: "Configure Automatic Updates"
+    duration_min: 6
+    status: not_started
+  - id: module-04
+    title: "Roll Back a Failed Update"
+    duration_min: 5
+    status: not_started
   environment:
     platform: ""               # ocp | rhel-vms — determines which sizing fields apply
     topology: ""               # shared-cluster | per-student | cnv-pool
@@ -79,7 +98,7 @@ tracking:
 approval_checklist:
 
   content:
-    prerequisites_verifiable: null
+    prerequisites_verifiable: false
     assessment_strategy: ""
     catalog_gap: ""
     design_overview: ""
