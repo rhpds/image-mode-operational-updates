@@ -1,0 +1,15 @@
+---
+# VALIDATE — Module 4 (Phase-1 stub)
+# Standalone playbook mode. Runs when the learner clicks "Validate".
+# Replace with real validation_check tasks in Phase 2.
+
+- name: "Module 4 Validation"
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: "Stub validation (always passes)"
+      validation_check:
+        check: true
+        pass_msg: "module-04 stub validation passed"
+        error_msg: "module-04 stub validation failed"

@@ -1,0 +1,119 @@
+= Configure Automatic Updates
+
+You've published an updated image. Now configure the host to fetch and apply it on its own, using the `bootc-fetch-apply-updates` systemd timer. This turns image delivery into a hands-off, scheduled operation.
+
+[IMPORTANT]
+====
+*Switch tabs* → work in the `Bootc VM` terminal for this module.
+====
+
+== How the Timer Works
+
+RHEL image mode ships a pair of systemd units for automatic updates:
+
+* `bootc-fetch-apply-updates.timer` — a systemd *timer* that fires on a schedule.
+* `bootc-fetch-apply-updates.service` — the *service* the timer triggers. It checks the registry for a newer image at the reference the host is tracking, and if it finds one, stages it and reboots the host to apply it.
+
+Because your host tracks `registry-<guid>.<domain>/base` and you pushed a new image to that same reference in the previous module, enabling this timer is all it takes for the host to pick up version `2.0`.
+
+Look at the timer's current state:
+
+[source,bash,role=execute]
+----
+systemctl status bootc-fetch-apply-updates.timer --no-pager
+----
+
+By default the timer is not active, so nothing is being fetched yet.
+
+== (Optional) Set the Schedule
+
+The schedule lives in the timer unit. To run updates on your own cadence, drop in an override instead of editing the shipped unit. For example, to check every day at 02:00:
+
+[source,bash,role=execute]
+----
+sudo mkdir -p /etc/systemd/system/bootc-fetch-apply-updates.timer.d
+sudo tee /etc/systemd/system/bootc-fetch-apply-updates.timer.d/schedule.conf > /dev/null <<'EOF'
+[Timer]
+OnCalendar=
+OnCalendar=*-*-* 02:00:00
+RandomizedDelaySec=30m
+EOF
+sudo systemctl daemon-reload
+----
+
+[NOTE]
+====
+The empty `OnCalendar=` first clears any schedule shipped in the unit, then the second line sets yours. `RandomizedDelaySec` spreads a fleet's checks out so they don't all hit the registry at the same instant.
+====
+
+== Enable and Start the Timer
+
+Enable the timer so it starts now and on every boot:
+
+[source,bash,role=execute]
+----
+sudo systemctl enable --now bootc-fetch-apply-updates.timer
+----
+
+Confirm it's both enabled and active:
+
+[source,bash,role=execute]
+----
+systemctl is-enabled bootc-fetch-apply-updates.timer
+systemctl is-active bootc-fetch-apply-updates.timer
+----
+
+Both should report `enabled` and `active`.
+
+== Apply the Update Now
+
+Rather than wait for the scheduled time, trigger the service directly to watch the update happen. The service will fetch version `2.0`, stage it, and reboot the host to apply it:
+
+[source,bash,role=execute]
+----
+sudo systemctl start bootc-fetch-apply-updates.service
+----
+
+[IMPORTANT]
+====
+The host will reboot on its own once the update is staged. That's the timer's job — fetch, apply, reboot.
+====
+
+== Verify the Update Landed
+
+[IMPORTANT]
+====
+*Reconnect* → once the host has rebooted, return to the `Bootc VM` tab and click the reconnect button. It will log you back in automatically.
+====
+
+Confirm the host is now running the updated image:
+
+[source,bash,role=execute]
+----
+sudo bootc status
+----
+
+The *booted* image is now version `2.0`, and version `1.0` appears as the *rollback* image. Check the marker to be sure:
+
+[source,bash,role=execute]
+----
+cat /etc/lab-image-version
+----
+
+It should now read `2.0`, and `tmux` — the utility the update added — is now available:
+
+[source,bash,role=execute]
+----
+command -v tmux
+----
+
+[NOTE]
+====
+*From: Nate (Senior Sysadmin)*
+
+That's the whole point of image mode updates: you published one artifact, the host pulled it and rebooted into it, and the old image is still sitting right there as a rollback target. Which is handy, because sometimes an update doesn't go the way you hoped...
+
+-Nate
+====
+
+Click *Next* to handle an update that needs to be undone.

@@ -1,0 +1,5 @@
+* xref:index.adoc[Lab Overview]
+* xref:module-01.adoc[Introduction to Image Mode Updates]
+* xref:module-02.adoc[Build and Push an Updated Image]
+* xref:module-03.adoc[Configure Automatic Updates]
+* xref:module-04.adoc[Roll Back a Failed Update]

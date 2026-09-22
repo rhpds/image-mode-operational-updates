@@ -1,0 +1,12 @@
+---
+# SETUP — Module 1 (Phase-1 stub)
+# Standalone playbook mode. Runs before the module starts.
+
+- name: "Module 1 Setup"
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: "Stub setup (no-op)"
+      ansible.builtin.debug:
+        msg: "module-01 setup stub"
