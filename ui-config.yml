@@ -1,0 +1,19 @@
+---
+antora:
+  name: modules
+  dir: www
+  modules:
+    - name: index
+      label: "Introduction"
+    - name: module-01
+      label: "Module 1: Introduction to Image Mode Updates"
+    - name: module-02
+      label: "Module 2: Build and Push an Updated Image"
+    - name: module-03
+      label: "Module 3: Configure Automatic Updates"
+    - name: module-04
+      label: "Module 4: Roll Back a Failed Update"
+
+tabs:
+  - name: ">_ terminal"
+    path: /wetty

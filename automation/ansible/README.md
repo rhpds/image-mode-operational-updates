@@ -1,4 +1,4 @@
-# `<your_collection_name>`
+# `automation`
 
 Starter Ansible collection for this project's custom automation — the base to build your
 own roles on top of. It ships with a single no-op `example` role (`roles/example/`) so
@@ -19,7 +19,7 @@ guide for the full walkthrough, including how to wire it into an AgnosticV
    `rhdp-publishing-house-template` repository directly instead.
 2. Edit `galaxy.yml` — replace `<your_namespace>`, `<your_collection_name>`, and
    the author line. These become the prefix for every role's fully qualified name
-   (`<your_namespace>.<your_collection_name>.<role_name>`).
+   (`image_mode_operational_updates.automation.<role_name>`).
 3. Rename or remove `roles/example/` and add your own roles under `roles/`.
 4. Commit, then tag a release once it's ready to be consumed
    (`git tag v1.0.0 && git push --tags`).
