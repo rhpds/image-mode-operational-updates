@@ -29,11 +29,11 @@ In a real fleet the "update" is usually a newer base image, added packages, secu
 
 == Build the Updated Image
 
-Build the image and tag it with the registry reference the host is tracking. The `${GUID}` and `${DOMAIN}` variables are already set in your shell, so this command tags the image for your local registry:
+Build the image and tag it with the registry reference the host is tracking. Your lab's unique registry hostname is filled in for you below:
 
-[source,bash,role=execute]
+[source,bash,role=execute,subs=attributes+]
 ----
-podman build --file ~/examples/Containerfile --tag registry-${GUID}.${DOMAIN}/base ~/examples
+podman build --file ~/examples/Containerfile --tag registry-{guid}.{domain}/base ~/examples
 ----
 
 The build pulls the RHEL bootc base, applies your changes, and finishes with a clean lint. Confirm the image is present locally:
@@ -45,16 +45,16 @@ podman images | grep base
 
 [IMPORTANT]
 ====
-Tag the updated image with the *same* reference the host is already running (`registry-${GUID}.${DOMAIN}/base`). That shared reference is what lets the host recognize your new build as an upgrade in the next module — and what makes rollback possible after that.
+Tag the updated image with the *same* reference the host is already running (`registry-{guid}.{domain}/base`). That shared reference is what lets the host recognize your new build as an upgrade in the next module — and what makes rollback possible after that.
 ====
 
 == Push the Image to the Registry
 
 Publish the image so the host can pull it:
 
-[source,bash,role=execute]
+[source,bash,role=execute,subs=attributes+]
 ----
-podman push registry-${GUID}.${DOMAIN}/base
+podman push registry-{guid}.{domain}/base
 ----
 
 The registry is local to your lab environment and already trusts the certificate it was set up with, so the push completes without any extra configuration.

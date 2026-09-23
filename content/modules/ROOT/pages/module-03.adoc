@@ -14,7 +14,7 @@ RHEL image mode ships a pair of systemd units for automatic updates:
 * `bootc-fetch-apply-updates.timer` — a systemd *timer* that fires on a schedule.
 * `bootc-fetch-apply-updates.service` — the *service* the timer triggers. It checks the registry for a newer image at the reference the host is tracking, and if it finds one, stages it and reboots the host to apply it.
 
-Because your host tracks `registry-<guid>.<domain>/base` and you pushed a new image to that same reference in the previous module, enabling this timer is all it takes for the host to pick up version `2.0`.
+Because your host tracks `registry-{guid}.{domain}/base` and you pushed a new image to that same reference in the previous module, enabling this timer is all it takes for the host to pick up version `2.0`.
 
 Look at the timer's current state:
 
