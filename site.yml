@@ -1,7 +1,7 @@
 ---
 site:
-  title: My Project
-  url: https://github.com/rhpds/my-project
+  title: Managing Updates for RHEL Image Mode Hosts
+  url: https://github.com/rhpds/image-mode-operational-updates
   start_page: modules::index.adoc
 
 content:

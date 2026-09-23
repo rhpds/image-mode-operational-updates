@@ -1,0 +1,114 @@
+= Roll Back a Failed Update
+
+Not every update goes to plan. Image mode's built-in safety net is that the previous image is still on disk — so recovering from a bad update is a single command plus a reboot. In this module you'll roll the host back to its previous image.
+
+[IMPORTANT]
+====
+*Switch tabs* → work in the `Bootc VM` terminal for this module.
+====
+
+== The Scenario
+
+The version `2.0` update is live across the fleet, and the reports start coming in.
+
+[quote, Manager Scott]
+____
+Uhh, team? Since that update, something feels *off*. I can't explain it exactly but I need the old version back RIGHT NOW. Undo it! Can you undo it? Please tell me you can undo it.
+____
+
+[NOTE]
+====
+*From: Nate (Senior Sysadmin)*
+
+Breathe. This is exactly the situation image mode is built for. The previous image — version `1.0` — is still sitting on disk as the rollback target. We don't rebuild anything, we don't restore from backup. We tell bootc to boot the previous deployment and reboot. Thirty seconds of downtime and we're back to a known-good state.
+
+-Nate
+====
+
+== Confirm the Current State
+
+Look at the deployments the host is tracking:
+
+[source,bash,role=execute]
+----
+sudo bootc status
+----
+
+The *booted* image is version `2.0` (the update). The *rollback* image is version `1.0` (the known-good previous image). That rollback entry is what makes recovery possible.
+
+== Roll Back to the Previous Image
+
+Tell bootc to make the previous deployment the default for the next boot:
+
+[source,bash,role=execute]
+----
+sudo bootc rollback
+----
+
+Check the status again — the previous image is now staged to boot next:
+
+[source,bash,role=execute]
+----
+sudo bootc status
+----
+
+Now reboot to activate it:
+
+[source,bash,role=execute]
+----
+sudo systemctl reboot
+----
+
+[NOTE]
+====
+Rolling back reverts `/usr` and `/etc` to the previous image, but *not* `/var` — local data in `/var` is preserved across the rollback, just as it is across an upgrade. That's why image mode rollbacks are safe for stateful hosts.
+====
+
+== Verify the Rollback
+
+[IMPORTANT]
+====
+*Reconnect* → once the host has rebooted, return to the `Bootc VM` tab and click the reconnect button.
+====
+
+Confirm the host is back on the previous image:
+
+[source,bash,role=execute]
+----
+sudo bootc status
+----
+
+The *booted* image is version `1.0` again, and version `2.0` now appears as the *rollback* image — the roles have swapped, so you could roll *forward* again just as easily. Confirm the marker and that the update's change is gone:
+
+[source,bash,role=execute]
+----
+cat /etc/lab-image-version
+command -v tmux || echo "tmux is gone — back to version 1.0"
+----
+
+The marker reads `1.0` and `tmux` (added in version `2.0`) is no longer present. You're back to the known-good state.
+
+[quote, Manager Scott]
+____
+See?! I *knew* it would be fine. Great work, team. I'll let leadership know I resolved it personally.
+____
+
+== Summary
+
+You've now driven the full image mode update lifecycle:
+
+1. *Inspected* the running host's current image as a baseline.
+2. *Built and pushed* an updated bootc image to the registry.
+3. *Configured automatic updates* with the `bootc-fetch-apply-updates` timer and watched the host fetch, apply, and reboot into the new image.
+4. *Rolled back* to the previous image with `bootc rollback` when the update needed to be undone.
+
+[NOTE]
+====
+*From: Nate (Senior Sysadmin)*
+
+That's the image mode operating model in a nutshell: updates are whole images, delivery is automatic, and rollback is always one command away. Build it, ship it, and never be afraid to hit undo.
+
+-Nate
+====
+
+Congratulations — you've completed the lab!

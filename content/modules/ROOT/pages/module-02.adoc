@@ -1,0 +1,67 @@
+= Build and Push an Updated Image
+
+Updating an image mode host starts on the build side: you produce a new version of the OS image and publish it to a registry. In this module you'll build an updated bootc image with Podman and push it to your local registry so the host can pull it later.
+
+[IMPORTANT]
+====
+*Switch tabs* → work in the `Build host terminal` for this module.
+====
+
+== Review the Containerfile
+
+A Containerfile that defines the updated image is already on the build host at `~/examples/Containerfile`. Take a look:
+
+[source,bash,role=execute]
+----
+cat ~/examples/Containerfile
+----
+
+Notice what makes this an *update* over the running host's current image:
+
+* It installs an extra utility (`tmux`) — a small, visible userspace change.
+* It bumps the version marker in `/etc/lab-image-version` from `1.0` to `2.0`.
+* Like every bootc build, it ends with `bootc container lint`.
+
+[NOTE]
+====
+In a real fleet the "update" is usually a newer base image, added packages, security fixes, or configuration baked in. The mechanics are identical to what you're doing here: change the Containerfile, rebuild, and push.
+====
+
+== Build the Updated Image
+
+Build the image and tag it with the registry reference the host is tracking. Your lab's unique registry hostname is filled in for you below:
+
+[source,bash,role=execute,subs=attributes+]
+----
+podman build --file ~/examples/Containerfile --tag registry-{guid}.{domain}/base ~/examples
+----
+
+The build pulls the RHEL bootc base, applies your changes, and finishes with a clean lint. Confirm the image is present locally:
+
+[source,bash,role=execute]
+----
+podman images | grep base
+----
+
+[IMPORTANT]
+====
+Tag the updated image with the *same* reference the host is already running (`registry-{guid}.{domain}/base`). That shared reference is what lets the host recognize your new build as an upgrade in the next module — and what makes rollback possible after that.
+====
+
+== Push the Image to the Registry
+
+Publish the image so the host can pull it:
+
+[source,bash,role=execute,subs=attributes+]
+----
+podman push registry-{guid}.{domain}/base
+----
+
+The registry is local to your lab environment and already trusts the certificate it was set up with, so the push completes without any extra configuration.
+
+[TIP]
+====
+The registry is the delivery mechanism. Until an image is pushed there, no host can pull and apply it. Now that version `2.0` is published, the host has something newer to fetch.
+====
+
+Click *Next* to configure the host to fetch and apply this update automatically.

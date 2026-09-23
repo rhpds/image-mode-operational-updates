@@ -1,5 +1,5 @@
 name: modules
-title: My Lab Title
+title: Managing Updates for RHEL Image Mode Hosts
 version: ~
 nav:
   - modules/ROOT/nav.adoc

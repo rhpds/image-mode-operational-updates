@@ -1,0 +1,22 @@
+# Updated bootc image for the image-mode operational-updates lab.
+#
+# This is the "new version" the participant builds in Module 2 and publishes to
+# the local registry. Compared to the running host's current image (version 1.0)
+# it installs an extra utility (tmux) and bumps the version marker to 2.0, so the
+# update is observable on the host after the automatic-update timer applies it in
+# Module 3 — and the change disappears again after the rollback in Module 4.
+FROM registry.redhat.io/rhel10/rhel-bootc:10.1
+
+# A visible userspace change so participants can confirm the update landed.
+RUN dnf -y install tmux && dnf clean all
+
+# Version marker the participant can cat before/after the update and rollback.
+RUN echo "2.0" > /etc/lab-image-version
+
+# Passwordless sudo for the wheel group (the lab 'core' user is in wheel), baked
+# in so it persists across bootc upgrade and rollback.
+RUN echo '%wheel ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/wheel-nopasswd && \
+    chmod 0440 /etc/sudoers.d/wheel-nopasswd
+
+# Linting is always the final build step.
+RUN bootc container lint

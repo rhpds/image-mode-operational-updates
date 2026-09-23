@@ -1,0 +1,58 @@
+= Introduction to Image Mode Updates
+
+Before you change anything, get your bearings. In this module you'll confirm the host is running in image mode and note exactly which image it's booted from — the baseline you'll update and, later, roll back to.
+
+== The Scenario
+
+You're a systems administrator at *Super-Business*. The team has standardized a fleet of RHEL hosts on *image mode* so that every machine runs a known, versioned operating-system image instead of a pile of individually-patched packages.
+
+[quote, Manager Scott]
+____
+Team! I heard image mode means updates are "just containers" now, so this should be trivial. Push out the new version, keep everything running, and if it breaks... un-break it. You're the best!
+____
+
+[NOTE]
+====
+*From: Nate (Senior Sysadmin)*
+
+Scott's not wrong, for once — image mode updates really are clean once you know the moves. Three of them: *build* a new image, let the host *fetch and apply* it, and *roll back* if it misbehaves. We'll do each one. First, let's look at what the host is running right now so we have a baseline to compare against.
+
+-Nate
+====
+
+== Inspect the Current Image
+
+[IMPORTANT]
+====
+*Switch tabs* → work in the `Bootc VM` terminal for this module.
+====
+
+The single most useful command on an image mode host is `bootc status`. It tells you whether you're on a bootc host at all, and — critically — which image is *booted*, which is *staged* for next boot, and which is available as a *rollback*.
+
+[source,bash,role=execute]
+----
+sudo bootc status
+----
+
+Two things to notice:
+
+* *Booted image* — the image reference and version the host is running right now. This is your baseline.
+* There is no *staged* or *rollback* image yet. That's expected: the host has only ever booted this one image. Both will appear as you progress through the lab.
+
+== Note the Version Marker
+
+This lab's image carries a small version marker so you can see updates and rollbacks take effect at a glance:
+
+[source,bash,role=execute]
+----
+cat /etc/lab-image-version
+----
+
+You should see `1.0`. Keep that in mind — after you build and apply an update it will read `2.0`, and after you roll back it will read `1.0` again.
+
+[TIP]
+====
+On an image mode host, `/usr` is read-only and the whole OS comes from the booted image. You don't `dnf update` this host into a new state — you give it a new *image*. That's exactly what you'll build next.
+====
+
+Click *Next* to build the updated image.

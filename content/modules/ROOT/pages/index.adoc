@@ -1,5 +1,40 @@
-= My Lab Title
+= Managing Updates for RHEL Image Mode Hosts
 
-This project was created with the RHDP Publishing House template.
+Welcome! In this lab you'll learn how to update a RHEL *image mode* host the way it's meant to be done: by building a new operating-system image, publishing it to a registry, letting the host pull and apply it automatically, and rolling back cleanly if an update goes wrong.
 
-Run `/rhdp-publishing-house` in Claude Code to begin.
+== What Is Image Mode?
+
+In traditional (package mode) RHEL, you change a running system by installing and updating individual RPM packages in place. In *image mode*, the entire operating system is delivered as a single bootable container image (a *bootc* image). You don't patch the host package by package — you build a new image and the host switches to it atomically.
+
+That changes the whole update workflow:
+
+[source,text]
+----
+Package mode:  dnf update              -> reboot if needed -> done
+Image mode:    build new image -> push -> host pulls & applies -> reboot
+----
+
+The payoff is that every update is a complete, versioned, testable artifact — and because the previous image is kept on disk, rolling back is a single command.
+
+== What You'll Do
+
+This lab walks the operational update lifecycle end to end, in four short modules:
+
+1. *Introduction to Image Mode Updates* — meet the running bootc host and inspect the image it's currently running.
+2. *Build and Push an Updated Image* — build a new version of the image with Podman and publish it to the registry.
+3. *Configure Automatic Updates* — enable the `bootc-fetch-apply-updates` timer so the host fetches and applies the new image on a schedule.
+4. *Roll Back a Failed Update* — return the host to its previous image with `bootc rollback`.
+
+== Your Lab Environment
+
+You have two terminals:
+
+* *Build host terminal* — a RHEL host with Podman, a Containerfile, and a local container registry. This is where you build and publish images.
+* *Bootc VM* — the RHEL image mode host itself, running as a virtual machine. This is the host you update and roll back.
+
+[NOTE]
+====
+The registry is local to your environment, so the whole build → publish → update → rollback loop is self-contained. Nothing you do here touches anything outside your lab.
+====
+
+When you're ready, click *Next* to begin.

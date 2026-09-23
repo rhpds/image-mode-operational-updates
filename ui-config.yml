@@ -1,4 +1,5 @@
 ---
+
 antora:
   name: modules
   dir: www
@@ -6,14 +7,24 @@ antora:
     - name: index
       label: "Introduction"
     - name: module-01
-      label: "Module 1: Introduction to Image Mode Updates"
+      label: "Introduction to Image Mode Updates"
+      solveButton: false
     - name: module-02
-      label: "Module 2: Build and Push an Updated Image"
+      label: "Build and Push an Updated Image"
+      solveButton: false
     - name: module-03
-      label: "Module 3: Configure Automatic Updates"
+      label: "Configure Automatic Updates"
+      solveButton: false
     - name: module-04
-      label: "Module 4: Roll Back a Failed Update"
+      label: "Roll Back a Failed Update"
+      solveButton: false
 
 tabs:
-  - name: ">_ terminal"
-    path: /wetty
+  - name: "Build host terminal"
+    url: /wetty/ssh/root
+  - name: ">_ Bootc VM"
+    url: /wetty_bootc_vm/ssh/root
+    modules:
+      - module-01
+      - module-03
+      - module-04
