@@ -9,3 +9,5 @@ asciidoc:
     experimental: true
     page-pagination: true
     guid: '%GUID%'
+    ssh_user: 'root'
+    ssh_password: ''
