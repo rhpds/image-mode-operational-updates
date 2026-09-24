@@ -1,0 +1,70 @@
+---
+# Module 02 Validation: Verify image build and push completed
+# Expected: Image built locally, pushed to registry, contains tmux and v2.0 marker
+
+- name: Module 02 Validation | Log start
+  ansible.builtin.debug:
+    msg: "Module 02 validation: Starting..."
+
+- name: Module 02 Validation | Set registry facts
+  ansible.builtin.set_fact:
+    registry_url: "registry-{{ lab_guid }}.{{ lab_domain }}"
+    image_tag: "registry-{{ lab_guid }}.{{ lab_domain }}/base"
+    containerfile_path: "/root/examples/Containerfile"
+
+- name: Module 02 Validation | Verify Containerfile exists
+  ansible.builtin.stat:
+    path: "{{ containerfile_path }}"
+  register: r_containerfile
+  failed_when: not r_containerfile.stat.exists
+
+- name: Module 02 Validation | Read Containerfile content
+  ansible.builtin.command: cat {{ containerfile_path }}
+  register: r_containerfile_content
+  changed_when: false
+
+- name: Module 02 Validation | Verify Containerfile contains tmux
+  ansible.builtin.assert:
+    that:
+      - "'tmux' in r_containerfile_content.stdout"
+    fail_msg: "Containerfile does not contain 'tmux' package installation"
+    success_msg: "Containerfile includes tmux package"
+
+- name: Module 02 Validation | Verify Containerfile updates version to 2.0
+  ansible.builtin.assert:
+    that:
+      - "'lab-image-version' in r_containerfile_content.stdout"
+      - "'2.0' in r_containerfile_content.stdout"
+    fail_msg: "Containerfile does not update /etc/lab-image-version to 2.0"
+    success_msg: "Containerfile updates version marker to 2.0"
+
+- name: Module 02 Validation | Verify Containerfile includes bootc lint
+  ansible.builtin.assert:
+    that:
+      - "'bootc container lint' in r_containerfile_content.stdout"
+    fail_msg: "Containerfile does not include 'bootc container lint' step"
+    success_msg: "Containerfile includes bootc container lint"
+
+- name: Module 02 Validation | Verify image exists in local podman images
+  ansible.builtin.shell: podman images --format "{{.Repository}}:{{.Tag}}" | grep "{{ image_tag }}"
+  register: r_local_image
+  failed_when: r_local_image.rc != 0
+  changed_when: false
+
+- name: Module 02 Validation | Verify image in registry via skopeo
+  ansible.builtin.command: skopeo inspect --no-tags docker://{{ image_tag }}
+  register: r_skopeo_inspect
+  failed_when: r_skopeo_inspect.rc != 0
+  changed_when: false
+
+- name: Module 02 Validation | Parse skopeo output
+  ansible.builtin.set_fact:
+    image_manifest: "{{ r_skopeo_inspect.stdout | from_json }}"
+
+- name: Module 02 Validation | Display image digest
+  ansible.builtin.debug:
+    msg: "Image digest: {{ image_manifest.Digest }}"
+
+- name: Module 02 Validation | Log completion
+  ansible.builtin.debug:
+    msg: "Module 02 validation: PASSED - Image version 2.0 built and available in registry"

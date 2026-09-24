@@ -1,40 +1,108 @@
 ---
-# E2E — End-to-end test (migrated ZT Guided content)
-# Solves and validates every module in ui-config.yml order, reusing the
-# legacy runtime-automation shell scripts (solve-<host>.sh / validation-<host>.sh)
-# that a migrated repo already ships. Fails on the first broken module.
+# E2E — End-to-end test for Image Mode Operational Updates lab
+# Solves and validates all 4 modules in sequence:
+#   Module 01: Introduction to Image Mode Updates (read-only inspection)
+#   Module 02: Build and Push an Updated Image (podman build/push)
+#   Module 03: Configure Automatic Updates (timer + reboot)
+#   Module 04: Roll Back a Failed Update (rollback + reboot)
+#
+# Fails fast on first validation failure.
+# Handles system reboots in Module 03 and Module 04.
 
 - name: Build inventory
   hosts: localhost
   gather_facts: false
   tasks:
-    - name: Add bastion host
+    - name: Add bastion host (build host)
       ansible.builtin.add_host:
         name: "{{ lookup('ansible.builtin.env', 'BASTION_HOST') }}"
         ansible_ssh_host: "{{ lookup('ansible.builtin.env', 'BASTION_HOST') }}"
         ansible_ssh_port: "{{ lookup('ansible.builtin.env', 'BASTION_PORT') }}"
         ansible_ssh_user: "{{ lookup('ansible.builtin.env', 'BASTION_USER') }}"
         ansible_ssh_pass: "{{ lookup('ansible.builtin.env', 'BASTION_PASSWORD') }}"
+        groups: build_host
 
-- name: E2E - solve and validate all modules
+- name: E2E - Solve and validate all modules
   hosts: all:!localhost
   gather_facts: false
   become: true
-  vars:
-    runtime_path: "{{ playbook_dir }}/../runtime-automation"
-    _ui_config: "{{ lookup('file', playbook_dir ~ '/../ui-config.yml') | from_yaml }}"
-    modules_in_order: "{{ _ui_config.antora.modules | map(attribute='name') | list }}"
   tasks:
-    - name: "Run solve then validation for each module"
-      ansible.builtin.include_tasks: tasks/run_script.yml
-      loop: >-
-        {{
-          modules_in_order
-          | product(['solve', 'validation'])
-          | list
-        }}
-      loop_control:
-        loop_var: _module_stage
-      vars:
-        module_name: "{{ _module_stage[0] }}"
-        stage_name: "{{ _module_stage[1] }}"
+    - name: Set lab environment facts
+      block:
+        - name: Get GUID environment variable
+          ansible.builtin.shell: echo $GUID
+          register: r_guid
+          failed_when: r_guid.stdout | length == 0
+          changed_when: false
+
+        - name: Get DOMAIN environment variable
+          ansible.builtin.shell: echo $DOMAIN
+          register: r_domain
+          failed_when: r_domain.stdout | length == 0
+          changed_when: false
+
+        - name: Set lab facts for use in all modules
+          ansible.builtin.set_fact:
+            lab_guid: "{{ r_guid.stdout }}"
+            lab_domain: "{{ r_domain.stdout }}"
+            registry_url: "registry-{{ r_guid.stdout }}.{{ r_domain.stdout }}"
+
+        - name: Display lab environment
+          ansible.builtin.debug:
+            msg: "Lab GUID={{ lab_guid }}, DOMAIN={{ lab_domain }}, Registry={{ registry_url }}"
+
+    # Module 01: Introduction to Image Mode Updates
+    - name: "=== MODULE 01: Introduction to Image Mode Updates ==="
+      ansible.builtin.debug:
+        msg: "Starting Module 01 - read-only inspection of bootc VM state"
+
+    - name: Module 01 | Execute solve tasks
+      ansible.builtin.include_tasks: tasks/module_01_solve.yml
+
+    - name: Module 01 | Execute validation tasks
+      ansible.builtin.include_tasks: tasks/module_01_validate.yml
+
+    # Module 02: Build and Push an Updated Image
+    - name: "=== MODULE 02: Build and Push an Updated Image ==="
+      ansible.builtin.debug:
+        msg: "Starting Module 02 - build bootc container image v2.0 and push to registry"
+
+    - name: Module 02 | Execute solve tasks
+      ansible.builtin.include_tasks: tasks/module_02_solve.yml
+
+    - name: Module 02 | Execute validation tasks
+      ansible.builtin.include_tasks: tasks/module_02_validate.yml
+
+    # Module 03: Configure Automatic Updates
+    - name: "=== MODULE 03: Configure Automatic Updates ==="
+      ansible.builtin.debug:
+        msg: "Starting Module 03 - enable timer, trigger update, handle automatic reboot"
+
+    - name: Module 03 | Execute solve tasks (includes reboot)
+      ansible.builtin.include_tasks: tasks/module_03_solve.yml
+
+    - name: Module 03 | Execute validation tasks
+      ansible.builtin.include_tasks: tasks/module_03_validate.yml
+
+    # Module 04: Roll Back a Failed Update
+    - name: "=== MODULE 04: Roll Back a Failed Update ==="
+      ansible.builtin.debug:
+        msg: "Starting Module 04 - rollback to previous deployment and reboot"
+
+    - name: Module 04 | Execute solve tasks (includes reboot)
+      ansible.builtin.include_tasks: tasks/module_04_solve.yml
+
+    - name: Module 04 | Execute validation tasks
+      ansible.builtin.include_tasks: tasks/module_04_validate.yml
+
+    # Final summary
+    - name: "=== E2E TEST COMPLETE ==="
+      ansible.builtin.debug:
+        msg:
+          - "✓ All 4 modules completed successfully"
+          - "✓ Module 01: Bootc VM inspected (v1.0)"
+          - "✓ Module 02: Image v2.0 built and pushed to registry"
+          - "✓ Module 03: System updated to v2.0 with automatic updates enabled"
+          - "✓ Module 04: System rolled back to v1.0"
+          - ""
+          - "E2E test PASSED - Lab is fully functional"

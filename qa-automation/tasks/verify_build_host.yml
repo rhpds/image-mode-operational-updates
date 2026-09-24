@@ -1,0 +1,53 @@
+---
+# Build host verification tasks for Module 1 readiness
+# Verifies: podman, registry container, examples files, env vars
+
+- name: Verify podman is installed
+  ansible.builtin.command: podman --version
+  register: r_podman_version
+  failed_when: r_podman_version.rc != 0
+  changed_when: false
+
+- name: Display podman version
+  ansible.builtin.debug:
+    msg: "Podman version: {{ r_podman_version.stdout }}"
+
+- name: Verify registry container is running
+  ansible.builtin.command: podman ps --filter name=registry --format '{{.Names}}'
+  register: r_registry_ps
+  failed_when: "'registry' not in r_registry_ps.stdout"
+  changed_when: false
+
+- name: Verify examples directory exists
+  ansible.builtin.stat:
+    path: /root/examples/Containerfile
+  register: r_examples_containerfile
+  failed_when: not r_examples_containerfile.stat.exists
+
+- name: Verify examples/config.toml exists
+  ansible.builtin.stat:
+    path: /root/examples/config.toml
+  register: r_examples_config
+  failed_when: not r_examples_config.stat.exists
+
+- name: Verify GUID environment variable is set
+  ansible.builtin.shell: echo $GUID
+  register: r_guid
+  failed_when: r_guid.stdout | length == 0
+  changed_when: false
+
+- name: Verify DOMAIN environment variable is set
+  ansible.builtin.shell: echo $DOMAIN
+  register: r_domain
+  failed_when: r_domain.stdout | length == 0
+  changed_when: false
+
+- name: Display environment variables
+  ansible.builtin.debug:
+    msg: "GUID={{ r_guid.stdout }}, DOMAIN={{ r_domain.stdout }}"
+
+- name: Set registry facts for subsequent checks
+  ansible.builtin.set_fact:
+    lab_guid: "{{ r_guid.stdout }}"
+    lab_domain: "{{ r_domain.stdout }}"
+    registry_url: "registry-{{ r_guid.stdout }}.{{ r_domain.stdout }}"

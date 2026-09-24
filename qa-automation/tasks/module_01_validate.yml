@@ -1,0 +1,63 @@
+---
+# Module 01 Validation: Verify bootc VM is in expected initial state
+# Expected: booted image v1.0, no staged/rollback deployments
+
+- name: Module 01 Validation | Log start
+  ansible.builtin.debug:
+    msg: "Module 01 validation: Starting..."
+
+- name: Module 01 Validation | Get bootc status JSON
+  ansible.builtin.command: >
+    ssh -i /root/.ssh/{{ lab_guid }}key
+    -o StrictHostKeyChecking=no
+    core@bootc-vm
+    sudo bootc status --format=json
+  register: r_bootc_status_json
+  failed_when: r_bootc_status_json.rc != 0
+  changed_when: false
+
+- name: Module 01 Validation | Parse bootc status
+  ansible.builtin.set_fact:
+    bootc_status: "{{ r_bootc_status_json.stdout | from_json }}"
+
+- name: Module 01 Validation | Verify booted image exists
+  ansible.builtin.assert:
+    that:
+      - bootc_status.status.booted.image.image.image is defined
+      - bootc_status.status.booted.image.image.image | length > 0
+    fail_msg: "No booted image reference found in bootc status"
+    success_msg: "Booted image: {{ bootc_status.status.booted.image.image.image }}"
+
+- name: Module 01 Validation | Verify no staged deployment exists
+  ansible.builtin.assert:
+    that:
+      - bootc_status.status.staged is none or bootc_status.status.staged == None
+    fail_msg: "Staged deployment exists but should be absent in Module 1 initial state"
+    success_msg: "No staged deployment (expected)"
+
+- name: Module 01 Validation | Verify no rollback deployment exists
+  ansible.builtin.assert:
+    that:
+      - bootc_status.status.rollback is none or bootc_status.status.rollback == None
+    fail_msg: "Rollback deployment exists but should be absent in Module 1 initial state"
+    success_msg: "No rollback deployment (expected)"
+
+- name: Module 01 Validation | Get lab image version
+  ansible.builtin.command: >
+    ssh -i /root/.ssh/{{ lab_guid }}key
+    -o StrictHostKeyChecking=no
+    core@bootc-vm
+    cat /etc/lab-image-version
+  register: r_lab_version
+  changed_when: false
+
+- name: Module 01 Validation | Verify version is 1.0
+  ansible.builtin.assert:
+    that:
+      - r_lab_version.stdout.strip() == '1.0'
+    fail_msg: "Lab image version is '{{ r_lab_version.stdout.strip() }}' but expected '1.0'"
+    success_msg: "Lab image version marker: 1.0"
+
+- name: Module 01 Validation | Log completion
+  ansible.builtin.debug:
+    msg: "Module 01 validation: PASSED - VM is in correct initial state"

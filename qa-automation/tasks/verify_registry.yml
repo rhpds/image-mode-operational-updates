@@ -1,0 +1,42 @@
+---
+# Registry verification tasks for Module 1 readiness
+# Verifies: TLS certificates, registry HTTPS response, initial v1.0 image present
+
+- name: Verify registry TLS certificates exist
+  ansible.builtin.stat:
+    path: "/etc/letsencrypt/live/{{ registry_url }}/fullchain.pem"
+  register: r_registry_cert
+  failed_when: not r_registry_cert.stat.exists
+
+- name: Verify registry TLS private key exists
+  ansible.builtin.stat:
+    path: "/etc/letsencrypt/live/{{ registry_url }}/privkey.pem"
+  register: r_registry_key
+  failed_when: not r_registry_key.stat.exists
+
+- name: Verify registry responds on HTTPS
+  ansible.builtin.uri:
+    url: "https://{{ registry_url }}/v2/"
+    validate_certs: true
+    status_code: [200, 401]  # 401 = auth required (expected), 200 = ok
+  register: r_registry_https
+  failed_when: r_registry_https.status not in [200, 401]
+
+- name: Display registry HTTPS status
+  ansible.builtin.debug:
+    msg: "Registry responding on HTTPS with status {{ r_registry_https.status }}"
+
+- name: Verify initial v1.0 image is present in registry
+  ansible.builtin.command: >
+    skopeo inspect --no-tags docker://{{ registry_url }}/base
+  register: r_initial_image
+  failed_when: r_initial_image.rc != 0
+  changed_when: false
+
+- name: Parse initial image inspection
+  ansible.builtin.set_fact:
+    initial_image_manifest: "{{ r_initial_image.stdout | from_json }}"
+
+- name: Display initial image information
+  ansible.builtin.debug:
+    msg: "Initial image {{ registry_url }}/base is present (Digest: {{ initial_image_manifest.Digest[:19] }}...)"

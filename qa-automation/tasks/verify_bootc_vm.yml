@@ -1,0 +1,126 @@
+---
+# Bootc VM verification tasks for Module 1 readiness
+# Verifies: libvirt guest running, SSH access, bootc tooling, v1.0 image booted
+
+- name: Verify libvirt daemon is running
+  ansible.builtin.systemd:
+    name: libvirtd
+  register: r_libvirtd
+  failed_when: r_libvirtd.status.ActiveState != 'active'
+
+- name: Verify bootc-vm libvirt guest exists
+  ansible.builtin.command: virsh dominfo bootc-vm
+  register: r_vm_exists
+  failed_when: r_vm_exists.rc != 0
+  changed_when: false
+
+- name: Verify bootc-vm is in running state
+  ansible.builtin.command: virsh domstate bootc-vm
+  register: r_vm_state
+  failed_when: r_vm_state.stdout.strip() != 'running'
+  changed_when: false
+
+- name: Display VM state
+  ansible.builtin.debug:
+    msg: "Libvirt guest 'bootc-vm' state: {{ r_vm_state.stdout.strip() }}"
+
+- name: Wait for bootc-vm to be reachable via SSH (up to 60s)
+  ansible.builtin.command: >
+    ssh -i /root/.ssh/{{ lab_guid }}key
+    -o StrictHostKeyChecking=no
+    -o ConnectTimeout=5
+    -o BatchMode=yes
+    core@bootc-vm
+    echo connected
+  register: r_vm_ssh_wait
+  until: r_vm_ssh_wait.rc == 0
+  retries: 12
+  delay: 5
+  changed_when: false
+
+- name: Verify bootc command is available
+  ansible.builtin.command: >
+    ssh -i /root/.ssh/{{ lab_guid }}key
+    -o StrictHostKeyChecking=no
+    core@bootc-vm
+    sudo bootc --version
+  register: r_bootc_version
+  failed_when: r_bootc_version.rc != 0
+  changed_when: false
+
+- name: Display bootc version
+  ansible.builtin.debug:
+    msg: "Bootc version on VM: {{ r_bootc_version.stdout }}"
+
+- name: Run bootc status on VM
+  ansible.builtin.command: >
+    ssh -i /root/.ssh/{{ lab_guid }}key
+    -o StrictHostKeyChecking=no
+    core@bootc-vm
+    sudo bootc status --format=json
+  register: r_bootc_status
+  failed_when: r_bootc_status.rc != 0
+  changed_when: false
+
+- name: Parse bootc status
+  ansible.builtin.set_fact:
+    bootc_status: "{{ r_bootc_status.stdout | from_json }}"
+
+- name: Verify booted image reference matches expected registry
+  ansible.builtin.assert:
+    that:
+      - "'{{ registry_url }}/base' in bootc_status.status.booted.image.image.image"
+    fail_msg: "Booted image reference does not match expected registry path"
+    success_msg: "Booted image reference: {{ bootc_status.status.booted.image.image.image }}"
+
+- name: Verify no staged image exists (clean initial state)
+  ansible.builtin.assert:
+    that:
+      - bootc_status.status.staged is none or bootc_status.status.staged == None
+    fail_msg: "Staged image exists - VM is not in clean initial state"
+    success_msg: "No staged image (expected for Module 1 start)"
+
+- name: Verify no rollback image exists (clean initial state)
+  ansible.builtin.assert:
+    that:
+      - bootc_status.status.rollback is none or bootc_status.status.rollback == None
+    fail_msg: "Rollback image exists - VM is not in clean initial state"
+    success_msg: "No rollback image (expected for Module 1 start)"
+
+- name: Verify lab image version marker is 1.0
+  ansible.builtin.command: >
+    ssh -i /root/.ssh/{{ lab_guid }}key
+    -o StrictHostKeyChecking=no
+    core@bootc-vm
+    cat /etc/lab-image-version
+  register: r_lab_version
+  failed_when: r_lab_version.stdout.strip() != '1.0'
+  changed_when: false
+
+- name: Display lab image version
+  ansible.builtin.debug:
+    msg: "Lab image version marker: {{ r_lab_version.stdout.strip() }}"
+
+- name: Verify passwordless sudo works for core user
+  ansible.builtin.command: >
+    ssh -i /root/.ssh/{{ lab_guid }}key
+    -o StrictHostKeyChecking=no
+    core@bootc-vm
+    sudo -n whoami
+  register: r_sudo_check
+  failed_when: r_sudo_check.stdout.strip() != 'root'
+  changed_when: false
+
+- name: Verify tmux is NOT installed (part of v1.0 baseline)
+  ansible.builtin.command: >
+    ssh -i /root/.ssh/{{ lab_guid }}key
+    -o StrictHostKeyChecking=no
+    core@bootc-vm
+    command -v tmux
+  register: r_tmux_check
+  failed_when: r_tmux_check.rc == 0
+  changed_when: false
+
+- name: Display tmux verification
+  ansible.builtin.debug:
+    msg: "tmux correctly not installed in v1.0 image (will be added in v2.0)"

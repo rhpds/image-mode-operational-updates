@@ -1,0 +1,148 @@
+---
+# Module 03 Solve: Configure Automatic Updates
+# Enables bootc timer, triggers update, handles automatic reboot
+# WARNING: This task includes reboot handling - system will reboot automatically
+
+- name: Module 03 Solve | Log start
+  ansible.builtin.debug:
+    msg: "Module 03 solve: Starting automatic update configuration..."
+
+- name: Module 03 Solve | Check initial timer status
+  ansible.builtin.command: >
+    ssh -i /root/.ssh/{{ lab_guid }}key
+    -o StrictHostKeyChecking=no
+    core@bootc-vm
+    systemctl status bootc-fetch-apply-updates.timer --no-pager
+  register: r_timer_initial_status
+  failed_when: false
+  changed_when: false
+
+- name: Module 03 Solve | Display initial timer status
+  ansible.builtin.debug:
+    msg: "{{ r_timer_initial_status.stdout_lines }}"
+
+- name: Module 03 Solve | Enable and start bootc timer
+  ansible.builtin.command: >
+    ssh -i /root/.ssh/{{ lab_guid }}key
+    -o StrictHostKeyChecking=no
+    core@bootc-vm
+    sudo systemctl enable --now bootc-fetch-apply-updates.timer
+  register: r_timer_enable
+  failed_when: r_timer_enable.rc != 0
+
+- name: Module 03 Solve | Verify timer is enabled
+  ansible.builtin.command: >
+    ssh -i /root/.ssh/{{ lab_guid }}key
+    -o StrictHostKeyChecking=no
+    core@bootc-vm
+    systemctl is-enabled bootc-fetch-apply-updates.timer
+  register: r_timer_enabled
+  failed_when: r_timer_enabled.stdout.strip() != 'enabled'
+  changed_when: false
+
+- name: Module 03 Solve | Verify timer is active
+  ansible.builtin.command: >
+    ssh -i /root/.ssh/{{ lab_guid }}key
+    -o StrictHostKeyChecking=no
+    core@bootc-vm
+    systemctl is-active bootc-fetch-apply-updates.timer
+  register: r_timer_active
+  failed_when: r_timer_active.stdout.strip() != 'active'
+  changed_when: false
+
+- name: Module 03 Solve | Display timer status
+  ansible.builtin.debug:
+    msg: "Timer enabled: {{ r_timer_enabled.stdout.strip() }}, Timer active: {{ r_timer_active.stdout.strip() }}"
+
+- name: Module 03 Solve | Trigger update service (will cause reboot)
+  ansible.builtin.command: >
+    ssh -i /root/.ssh/{{ lab_guid }}key
+    -o StrictHostKeyChecking=no
+    core@bootc-vm
+    sudo systemctl start bootc-fetch-apply-updates.service
+  register: r_update_trigger
+  failed_when: false
+  async: 300
+  poll: 0
+
+- name: Module 03 Solve | Wait for system to start rebooting
+  ansible.builtin.pause:
+    seconds: 30
+    prompt: "Waiting for update to stage and system to begin reboot..."
+
+- name: Module 03 Solve | Wait for SSH to become unavailable (reboot started)
+  ansible.builtin.wait_for:
+    host: bootc-vm
+    port: 22
+    state: stopped
+    timeout: 120
+  delegate_to: localhost
+  ignore_errors: true
+
+- name: Module 03 Solve | Wait for SSH to become available (reboot complete)
+  ansible.builtin.wait_for:
+    host: bootc-vm
+    port: 22
+    state: started
+    delay: 10
+    timeout: 300
+  delegate_to: localhost
+
+- name: Module 03 Solve | Wait for system to stabilize after reboot
+  ansible.builtin.pause:
+    seconds: 10
+
+- name: Module 03 Solve | Verify system is back online
+  ansible.builtin.command: >
+    ssh -i /root/.ssh/{{ lab_guid }}key
+    -o StrictHostKeyChecking=no
+    -o ConnectTimeout=10
+    core@bootc-vm
+    true
+  register: r_ssh_test
+  retries: 12
+  delay: 5
+  until: r_ssh_test.rc == 0
+
+- name: Module 03 Solve | Get post-reboot bootc status
+  ansible.builtin.command: >
+    ssh -i /root/.ssh/{{ lab_guid }}key
+    -o StrictHostKeyChecking=no
+    core@bootc-vm
+    sudo bootc status
+  register: r_bootc_status_after
+  failed_when: r_bootc_status_after.rc != 0
+  changed_when: false
+
+- name: Module 03 Solve | Display post-reboot bootc status
+  ansible.builtin.debug:
+    msg: "{{ r_bootc_status_after.stdout_lines }}"
+
+- name: Module 03 Solve | Get post-reboot version
+  ansible.builtin.command: >
+    ssh -i /root/.ssh/{{ lab_guid }}key
+    -o StrictHostKeyChecking=no
+    core@bootc-vm
+    cat /etc/lab-image-version
+  register: r_version_after
+  changed_when: false
+
+- name: Module 03 Solve | Verify tmux is installed
+  ansible.builtin.command: >
+    ssh -i /root/.ssh/{{ lab_guid }}key
+    -o StrictHostKeyChecking=no
+    core@bootc-vm
+    command -v tmux
+  register: r_tmux_check
+  failed_when: r_tmux_check.rc != 0
+  changed_when: false
+
+- name: Module 03 Solve | Display results
+  ansible.builtin.debug:
+    msg:
+      - "Version after update: {{ r_version_after.stdout.strip() }}"
+      - "tmux installed at: {{ r_tmux_check.stdout.strip() }}"
+
+- name: Module 03 Solve | Log completion
+  ansible.builtin.debug:
+    msg: "Module 03 solve: Completed successfully - System updated to version 2.0"

@@ -1,0 +1,40 @@
+---
+# Module 01 Solve: Introduction to Image Mode Updates
+# Read-only inspection of bootc VM state - no system changes made
+
+- name: Module 01 Solve | Log start
+  ansible.builtin.debug:
+    msg: "Module 01 solve: Starting read-only inspection..."
+
+- name: Module 01 Solve | Run bootc status on VM
+  ansible.builtin.command: >
+    ssh -i /root/.ssh/{{ lab_guid }}key
+    -o StrictHostKeyChecking=no
+    -o ConnectTimeout=10
+    core@bootc-vm
+    sudo bootc status
+  register: r_bootc_status
+  failed_when: r_bootc_status.rc != 0
+  changed_when: false
+
+- name: Module 01 Solve | Display bootc status
+  ansible.builtin.debug:
+    msg: "{{ r_bootc_status.stdout_lines }}"
+
+- name: Module 01 Solve | Check lab image version marker
+  ansible.builtin.command: >
+    ssh -i /root/.ssh/{{ lab_guid }}key
+    -o StrictHostKeyChecking=no
+    core@bootc-vm
+    cat /etc/lab-image-version
+  register: r_lab_version
+  failed_when: r_lab_version.rc != 0
+  changed_when: false
+
+- name: Module 01 Solve | Display lab image version
+  ansible.builtin.debug:
+    msg: "Lab image version: {{ r_lab_version.stdout }}"
+
+- name: Module 01 Solve | Log completion
+  ansible.builtin.debug:
+    msg: "Module 01 solve: Completed successfully (read-only inspection)"
