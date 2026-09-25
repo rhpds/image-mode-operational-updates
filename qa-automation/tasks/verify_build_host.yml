@@ -66,14 +66,22 @@
       ⚠️  WARNING: config.toml is missing from examples directory
       {% endif %}
 
-- name: Check GUID environment variable
-  ansible.builtin.shell: echo $GUID
+- name: Check GUID environment variable (try both uppercase and lowercase)
+  ansible.builtin.shell: |
+    # Try uppercase first, then lowercase
+    if [ -n "$GUID" ]; then echo "$GUID"
+    elif [ -n "$guid" ]; then echo "$guid"
+    fi
   register: r_guid
   failed_when: false
   changed_when: false
 
-- name: Check DOMAIN environment variable
-  ansible.builtin.shell: echo $DOMAIN
+- name: Check DOMAIN environment variable (try both uppercase and lowercase)
+  ansible.builtin.shell: |
+    # Try uppercase first, then lowercase
+    if [ -n "$DOMAIN" ]; then echo "$DOMAIN"
+    elif [ -n "$domain" ]; then echo "$domain"
+    fi
   register: r_domain
   failed_when: false
   changed_when: false

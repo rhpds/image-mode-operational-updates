@@ -29,34 +29,78 @@
   tasks:
     - name: Set lab environment facts
       block:
-        - name: Get GUID environment variable
-          ansible.builtin.shell: echo $GUID
+        - name: Get namespace from environment (Showroom sets this)
+          ansible.builtin.shell: echo $NAMESPACE
+          register: r_namespace
+          failed_when: false
+          changed_when: false
+          delegate_to: localhost
+
+        - name: Read showroom-userdata ConfigMap (if in Showroom environment)
+          ansible.builtin.shell: |
+            kubectl get configmap showroom-userdata -n {{ r_namespace.stdout }} -o json 2>/dev/null || echo '{}'
+          register: r_configmap
+          failed_when: false
+          changed_when: false
+          delegate_to: localhost
+          when: r_namespace.stdout | length > 0
+
+        - name: Parse ConfigMap data
+          ansible.builtin.set_fact:
+            configmap_data: "{{ r_configmap.stdout | default('{}', true) | from_json }}"
+          when: r_configmap.stdout is defined and r_configmap.stdout | length > 0
+
+        - name: Extract GUID and DOMAIN from ConfigMap
+          ansible.builtin.set_fact:
+            showroom_guid: "{{ configmap_data.data.guid | default('') }}"
+            showroom_domain: "{{ configmap_data.data.domain | default('') }}"
+          when: configmap_data is defined and configmap_data.data is defined
+
+        - name: Check environment variables (try both uppercase and lowercase)
+          ansible.builtin.shell: |
+            # Try uppercase first, then lowercase
+            if [ -n "$GUID" ]; then echo "$GUID"
+            elif [ -n "$guid" ]; then echo "$guid"
+            fi
           register: r_guid
           failed_when: false
           changed_when: false
 
-        - name: Get DOMAIN environment variable
-          ansible.builtin.shell: echo $DOMAIN
+        - name: Check DOMAIN environment variable
+          ansible.builtin.shell: |
+            # Try uppercase first, then lowercase
+            if [ -n "$DOMAIN" ]; then echo "$DOMAIN"
+            elif [ -n "$domain" ]; then echo "$domain"
+            fi
           register: r_domain
           failed_when: false
           changed_when: false
 
         - name: Set lab facts for use in all modules
           ansible.builtin.set_fact:
-            lab_guid: "{{ r_guid.stdout | default('test-guid', true) }}"
-            lab_domain: "{{ r_domain.stdout | default('example.com', true) }}"
-            registry_url: "registry-{{ r_guid.stdout | default('test-guid', true) }}.{{ r_domain.stdout | default('example.com', true) }}"
+            lab_guid: "{{ showroom_guid | default(r_guid.stdout, true) | default('test-guid', true) }}"
+            lab_domain: "{{ showroom_domain | default(r_domain.stdout, true) | default('example.com', true) }}"
+            registry_url: "registry-{{ showroom_guid | default(r_guid.stdout, true) | default('test-guid', true) }}.{{ showroom_domain | default(r_domain.stdout, true) | default('example.com', true) }}"
 
         - name: Display lab environment
           ansible.builtin.debug:
             msg: |
-              {% if r_guid.stdout | length > 0 and r_domain.stdout | length > 0 %}
-              ✓ Lab environment: GUID={{ lab_guid }}, DOMAIN={{ lab_domain }}, Registry={{ registry_url }}
+              {% if showroom_guid is defined and showroom_guid | length > 0 %}
+              ✓ Lab environment (from showroom-userdata ConfigMap):
+                - GUID: {{ lab_guid }}
+                - DOMAIN: {{ lab_domain }}
+                - Registry: {{ registry_url }}
+                - Namespace: {{ r_namespace.stdout }}
+              {% elif r_guid.stdout | length > 0 and r_domain.stdout | length > 0 %}
+              ✓ Lab environment (from environment variables):
+                - GUID: {{ lab_guid }}
+                - DOMAIN: {{ lab_domain }}
+                - Registry: {{ registry_url }}
               {% else %}
-              ⚠️  WARNING: GUID/DOMAIN environment variables not set
-              → Using placeholder values for testing: GUID={{ lab_guid }}, DOMAIN={{ lab_domain }}
-              → E2E tests may fail if they require actual infrastructure
-              → For full testing, ensure setup-automation has run and GUID/DOMAIN are exported
+              ⚠️  WARNING: Lab environment not configured
+              → Using placeholder values: GUID={{ lab_guid }}, DOMAIN={{ lab_domain }}
+              → E2E tests will likely fail without real infrastructure
+              → Expected: showroom-userdata ConfigMap or GUID/DOMAIN environment variables
               {% endif %}
 
     # Module 01: Introduction to Image Mode Updates
