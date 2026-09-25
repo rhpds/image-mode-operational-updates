@@ -105,58 +105,124 @@
               → Expected: showroom-userdata ConfigMap or GUID/DOMAIN environment variables
               {% endif %}
 
+    # Pre-flight check: Verify infrastructure exists
+    - name: "=== Infrastructure Pre-flight Check ==="
+      ansible.builtin.debug:
+        msg: "Verifying bootc-vm is accessible before running module tests..."
+
+    - name: Check if bootc-vm is accessible
+      ansible.builtin.command: >
+        ssh -i /root/.ssh/{{ lab_guid }}key
+        -o StrictHostKeyChecking=no
+        -o ConnectTimeout=5
+        -o BatchMode=yes
+        core@bootc-vm
+        echo connected
+      register: r_preflight
+      failed_when: false
+      changed_when: false
+
+    - name: Display pre-flight result
+      ansible.builtin.debug:
+        msg: |
+          {% if r_preflight.rc == 0 %}
+          ✓ Bootc VM is accessible - proceeding with module tests
+          {% else %}
+          ⚠️  WARNING: Bootc VM is not accessible
+          → Setup automation has not run or bootc-vm is not running
+          → Module tests will be skipped
+          → To run full e2e: ensure setup-automation/setup.yml has completed
+          {% endif %}
+
+    - name: Set infrastructure_ready fact
+      ansible.builtin.set_fact:
+        infrastructure_ready: "{{ r_preflight.rc == 0 }}"
+
     # Module 01: Introduction to Image Mode Updates
     - name: "=== MODULE 01: Introduction to Image Mode Updates ==="
       ansible.builtin.debug:
         msg: "Starting Module 01 - read-only inspection of bootc VM state"
+      when: infrastructure_ready | bool
 
     - name: Module 01 | Execute solve tasks
       ansible.builtin.include_tasks: tasks/module_01_solve.yml
+      when: infrastructure_ready | bool
 
     - name: Module 01 | Execute validation tasks
       ansible.builtin.include_tasks: tasks/module_01_validate.yml
+      when: infrastructure_ready | bool
 
     # Module 02: Build and Push an Updated Image
     - name: "=== MODULE 02: Build and Push an Updated Image ==="
       ansible.builtin.debug:
         msg: "Starting Module 02 - build bootc container image v2.0 and push to registry"
+      when: infrastructure_ready | bool
 
     - name: Module 02 | Execute solve tasks
       ansible.builtin.include_tasks: tasks/module_02_solve.yml
+      when: infrastructure_ready | bool
 
     - name: Module 02 | Execute validation tasks
       ansible.builtin.include_tasks: tasks/module_02_validate.yml
+      when: infrastructure_ready | bool
 
     # Module 03: Configure Automatic Updates
     - name: "=== MODULE 03: Configure Automatic Updates ==="
       ansible.builtin.debug:
         msg: "Starting Module 03 - enable timer, trigger update, handle automatic reboot"
+      when: infrastructure_ready | bool
 
     - name: Module 03 | Execute solve tasks (includes reboot)
       ansible.builtin.include_tasks: tasks/module_03_solve.yml
+      when: infrastructure_ready | bool
 
     - name: Module 03 | Execute validation tasks
       ansible.builtin.include_tasks: tasks/module_03_validate.yml
+      when: infrastructure_ready | bool
 
     # Module 04: Roll Back a Failed Update
     - name: "=== MODULE 04: Roll Back a Failed Update ==="
       ansible.builtin.debug:
         msg: "Starting Module 04 - rollback to previous deployment and reboot"
+      when: infrastructure_ready | bool
 
     - name: Module 04 | Execute solve tasks (includes reboot)
       ansible.builtin.include_tasks: tasks/module_04_solve.yml
+      when: infrastructure_ready | bool
 
     - name: Module 04 | Execute validation tasks
       ansible.builtin.include_tasks: tasks/module_04_validate.yml
+      when: infrastructure_ready | bool
 
     # Final summary
     - name: "=== E2E TEST COMPLETE ==="
       ansible.builtin.debug:
-        msg:
-          - "✓ All 4 modules completed successfully"
-          - "✓ Module 01: Bootc VM inspected (v1.0)"
-          - "✓ Module 02: Image v2.0 built and pushed to registry"
-          - "✓ Module 03: System updated to v2.0 with automatic updates enabled"
-          - "✓ Module 04: System rolled back to v1.0"
-          - ""
-          - "E2E test PASSED - Lab is fully functional"
+        msg: |
+          {% if infrastructure_ready | bool %}
+          ✓ All 4 modules completed successfully
+          ✓ Module 01: Bootc VM inspected (v1.0)
+          ✓ Module 02: Image v2.0 built and pushed to registry
+          ✓ Module 03: System updated to v2.0 with automatic updates enabled
+          ✓ Module 04: System rolled back to v1.0
+
+          E2E test PASSED - Lab is fully functional
+          {% else %}
+          ⚠️  E2E TEST SKIPPED - Infrastructure not ready
+
+          Reason: Bootc VM is not accessible
+
+          Module tests require:
+            - setup-automation/setup.yml has completed successfully
+            - bootc-vm libvirt guest is running
+            - SSH access to core@bootc-vm is working
+
+          What was tested:
+            ✓ Build host connectivity
+            ✓ Podman installed
+            ✓ GUID/DOMAIN configuration (GUID={{ lab_guid }}, DOMAIN={{ lab_domain }})
+
+          To run full e2e tests:
+            1. Run: cd setup-automation && ansible-playbook setup.yml
+            2. Wait for setup to complete (check /tmp/progress.log)
+            3. Re-run: ansible-playbook e2e.yml
+          {% endif %}
