@@ -135,8 +135,8 @@
 
         - name: Read showroom-userdata ConfigMap
           ansible.builtin.shell: |
-            oc get configmap showroom-userdata -n {{ r_namespace.stdout }} -o json 2>/dev/null || \
-            kubectl get configmap showroom-userdata -n {{ r_namespace.stdout }} -o json 2>/dev/null || \
+            timeout 10 oc get configmap showroom-userdata -n {{ r_namespace.stdout }} -o json 2>/dev/null || \
+            timeout 10 kubectl get configmap showroom-userdata -n {{ r_namespace.stdout }} -o json 2>/dev/null || \
             echo '{}'
           register: r_configmap
           failed_when: false
