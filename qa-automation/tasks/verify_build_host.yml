@@ -12,11 +12,53 @@
   ansible.builtin.debug:
     msg: "Podman version: {{ r_podman_version.stdout }}"
 
-- name: Verify registry container is running
-  ansible.builtin.shell: podman ps --filter name=registry --format '{{ "{{" }}.Names{{ "}}" }}'
-  register: r_registry_ps
-  failed_when: "'registry' not in r_registry_ps.stdout"
+- name: Check if registry container exists (any state)
+  ansible.builtin.shell: podman ps -a --filter name=registry --format '{{ "{{" }}.Names{{ "}}" }}'
+  register: r_registry_exists
+  failed_when: false
   changed_when: false
+
+- name: Check if registry container is running
+  ansible.builtin.shell: podman ps --filter name=registry --format '{{ "{{" }}.Names{{ "}}" }}'
+  register: r_registry_running
+  failed_when: false
+  changed_when: false
+
+- name: Registry status - Provide helpful diagnostics
+  ansible.builtin.debug:
+    msg: |
+      {% if 'registry' not in r_registry_exists.stdout %}
+      ⚠️  Registry container does not exist
+      → Setup automation has not run yet or failed during registry creation
+      → Action: Run setup-automation/setup.yml to provision the lab environment
+      {% elif 'registry' not in r_registry_running.stdout %}
+      ⚠️  Registry container exists but is stopped
+      → Action: Start it with: podman start registry
+      → Check logs if needed: podman logs registry
+      {% else %}
+      ✓ Registry container is running
+      {% endif %}
+
+- name: Fail if registry is not running (with clear guidance)
+  ansible.builtin.fail:
+    msg: |
+      Registry container is not running. See diagnostics above.
+
+      Expected state: Container 'registry' running on build host
+      Current state: {{ 'Container does not exist - setup not run' if 'registry' not in r_registry_exists.stdout else 'Container exists but is stopped' }}
+
+      Resolution:
+      {% if 'registry' not in r_registry_exists.stdout %}
+        1. Run setup automation: cd setup-automation && ansible-playbook setup.yml
+        2. Wait for setup to complete (check /tmp/progress.log on build host)
+        3. Re-run this healthcheck
+      {% else %}
+        1. Start the container: podman start registry
+        2. Verify it's healthy: podman ps --filter name=registry
+        3. Check logs if issues: podman logs registry
+        4. Re-run this healthcheck
+      {% endif %}
+  when: "'registry' not in r_registry_running.stdout"
 
 - name: Verify examples directory exists
   ansible.builtin.stat:

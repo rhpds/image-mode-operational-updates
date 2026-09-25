@@ -2,23 +2,69 @@
 # Bootc VM verification tasks for Module 1 readiness
 # Verifies: libvirt guest running, SSH access, bootc tooling, v1.0 image booted
 
-- name: Verify libvirt daemon is running
+- name: Check libvirt daemon status
   ansible.builtin.systemd:
     name: libvirtd
   register: r_libvirtd
-  failed_when: r_libvirtd.status.ActiveState != 'active'
+  failed_when: false
 
-- name: Verify bootc-vm libvirt guest exists
+- name: Fail if libvirtd not running (with clear guidance)
+  ansible.builtin.fail:
+    msg: |
+      ⚠️  libvirtd service is not running
+
+      Status: {{ r_libvirtd.status.ActiveState | default('unknown') }}
+
+      Resolution:
+        1. Start libvirtd: systemctl start libvirtd
+        2. Enable for boot: systemctl enable libvirtd
+        3. Check status: systemctl status libvirtd
+        4. Re-run this healthcheck
+  when: r_libvirtd.status.ActiveState != 'active'
+
+- name: Check if bootc-vm libvirt guest exists
   ansible.builtin.command: virsh dominfo bootc-vm
   register: r_vm_exists
-  failed_when: r_vm_exists.rc != 0
+  failed_when: false
   changed_when: false
 
-- name: Verify bootc-vm is in running state
+- name: Fail if bootc-vm doesn't exist (with clear guidance)
+  ansible.builtin.fail:
+    msg: |
+      ⚠️  Libvirt guest 'bootc-vm' does not exist
+
+      This VM is created by setup-automation during initial provisioning.
+
+      Resolution:
+        1. Check setup logs: cat /tmp/progress.log
+        2. Look for errors during:
+           - bootc-image-builder execution
+           - virt-install command
+        3. List existing VMs: virsh list --all
+        4. Re-run setup: cd setup-automation && ansible-playbook setup.yml
+        5. Re-run this healthcheck
+  when: r_vm_exists.rc != 0
+
+- name: Check bootc-vm running state
   ansible.builtin.command: virsh domstate bootc-vm
   register: r_vm_state
-  failed_when: r_vm_state.stdout.strip() != 'running'
+  failed_when: false
   changed_when: false
+
+- name: Fail if bootc-vm not running (with clear guidance)
+  ansible.builtin.fail:
+    msg: |
+      ⚠️  Bootc VM exists but is not running
+
+      Current state: {{ r_vm_state.stdout.strip() }}
+      Expected state: running
+
+      Resolution:
+        1. Start the VM: virsh start bootc-vm
+        2. Check status: virsh domstate bootc-vm
+        3. If it fails to start, check logs: virsh console bootc-vm (Ctrl+] to exit)
+        4. Re-run this healthcheck
+  when: r_vm_state.rc == 0 and r_vm_state.stdout.strip() != 'running'
 
 - name: Display VM state
   ansible.builtin.debug:
@@ -37,6 +83,29 @@
   retries: 12
   delay: 5
   changed_when: false
+  failed_when: false
+
+- name: Fail if SSH not reachable (with clear guidance)
+  ansible.builtin.fail:
+    msg: |
+      ⚠️  Bootc VM is running but SSH is not reachable after 60 seconds
+
+      VM state: running
+      SSH target: core@bootc-vm (using /root/.ssh/{{ lab_guid }}key)
+
+      Common causes:
+        1. VM is still booting (wait longer and retry)
+        2. SSH service not started in the bootc image
+        3. Name resolution not working (libvirt-nss issue)
+        4. SSH key mismatch
+
+      Resolution:
+        1. Wait 30 more seconds for boot, then re-run healthcheck
+        2. Check VM console: virsh console bootc-vm (Ctrl+] to exit)
+        3. Verify name resolution: ping bootc-vm
+        4. Check SSH key exists: ls -l /root/.ssh/{{ lab_guid }}key
+        5. Try direct connection: ssh -i /root/.ssh/{{ lab_guid }}key core@bootc-vm
+  when: r_vm_ssh_wait.rc != 0
 
 - name: Verify bootc command is available
   ansible.builtin.command: >
