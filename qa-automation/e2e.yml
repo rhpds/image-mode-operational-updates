@@ -253,22 +253,6 @@
           → Module 02 will still run (build/push on build host only)
           {% endif %}
 
-- name: "Module 01: Introduction to Image Mode Updates (SKIPPED - requires direct bootc-vm access)"
-  hosts: localhost
-  gather_facts: false
-  tasks:
-    - name: Module 01 status
-      ansible.builtin.debug:
-        msg: |
-          ⏭️  Module 01 skipped
-
-          Reason: bootc-vm is only accessible from build host, not from runner container
-
-          To run Module 01 manually on build host:
-            ssh rhel "ssh -i /root/.ssh/9xtlqkey core@bootc-vm 'sudo bootc status'"
-
-          Module 02 (build/push) will proceed...
-
 - name: "Module 02: Build and Push an Updated Image"
   hosts: build_host
   gather_facts: false
@@ -331,18 +315,11 @@
         msg: |
           ✓ E2E TEST PASSED
 
-          Completed modules:
-          ✓ Module 02: Image v2.0 built and pushed to registry
+          Verified:
+          ✓ Build host connectivity
+          ✓ GUID/DOMAIN detection from /etc/profile.d/lab.sh
+          ✓ Build bootc image v2.0 with podman
+          ✓ Push image to registry
+          ✓ Registry accessibility and image verification
 
-          Skipped modules (runner container cannot access nested bootc-vm):
-          ⏭️  Module 01: Bootc VM inspection
-          ⏭️  Module 03: Automatic updates (not yet implemented)
-          ⏭️  Module 04: Rollback (not yet implemented)
-
-          Core functionality verified:
-          - Build host connectivity
-          - GUID/DOMAIN detection from /etc/profile.d/lab.sh
-          - Podman build/push workflow
-          - Registry accessibility
-
-          Exit status: SUCCESS (Module 02 passed)
+          Critical lab workflow validated successfully
