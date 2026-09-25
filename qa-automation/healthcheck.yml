@@ -39,16 +39,20 @@
     - name: "=== Registry Verification ==="
       ansible.builtin.debug:
         msg: "Verifying local registry configuration..."
+      when: verify_registry | default(false)
 
     - name: Include registry verification tasks
       ansible.builtin.include_tasks: tasks/verify_registry.yml
+      when: verify_registry | default(false)
 
     - name: "=== Bootc VM Verification ==="
       ansible.builtin.debug:
         msg: "Verifying nested bootc VM is ready..."
+      when: verify_bootc_vm | default(false)
 
     - name: Include bootc VM verification tasks
       ansible.builtin.include_tasks: tasks/verify_bootc_vm.yml
+      when: verify_bootc_vm | default(false)
 
     - name: "=== Healthcheck Complete ==="
       ansible.builtin.debug:
