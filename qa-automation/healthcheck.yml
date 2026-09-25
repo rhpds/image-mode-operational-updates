@@ -24,7 +24,7 @@
 - name: Module 1 Healthcheck
   hosts: all:!localhost
   gather_facts: false
-  become: false
+  become: true
   tasks:
     - name: Verify SSH connectivity to build host
       ansible.builtin.ping:
