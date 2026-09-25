@@ -91,31 +91,47 @@
             showroom_domain: "{{ configmap_data.data.domain | default('') }}"
           when: configmap_data is defined and configmap_data.data is defined
 
-        - name: Check environment variables (try both uppercase and lowercase)
+        - name: Check environment variables (read from /etc/profile.d/lab.sh)
           ansible.builtin.shell: |
-            # Try uppercase first, then lowercase
-            if [ -n "$GUID" ]; then echo "$GUID"
-            elif [ -n "$guid" ]; then echo "$guid"
+            # Source environment files that setup created
+            if [ -f /etc/profile.d/lab.sh ]; then
+              source /etc/profile.d/lab.sh
             fi
-          register: r_guid
+
+            # Try multiple sources
+            GUID_VAL=""
+            DOMAIN_VAL=""
+
+            # 1. From sourced environment
+            [ -n "$GUID" ] && GUID_VAL="$GUID"
+            [ -n "$guid" ] && GUID_VAL="$guid"
+            [ -n "$DOMAIN" ] && DOMAIN_VAL="$DOMAIN"
+            [ -n "$domain" ] && DOMAIN_VAL="$domain"
+
+            # 2. From /etc/profile.d/lab.sh if not set
+            if [ -z "$GUID_VAL" ] && [ -f /etc/profile.d/lab.sh ]; then
+              GUID_VAL=$(grep "export GUID" /etc/profile.d/lab.sh 2>/dev/null | cut -d= -f2)
+            fi
+            if [ -z "$DOMAIN_VAL" ] && [ -f /etc/profile.d/lab.sh ]; then
+              DOMAIN_VAL=$(grep "export DOMAIN" /etc/profile.d/lab.sh 2>/dev/null | cut -d= -f2)
+            fi
+
+            echo "GUID=${GUID_VAL}"
+            echo "DOMAIN=${DOMAIN_VAL}"
+          register: r_env_vars
           failed_when: false
           changed_when: false
 
-        - name: Check DOMAIN environment variable
-          ansible.builtin.shell: |
-            # Try uppercase first, then lowercase
-            if [ -n "$DOMAIN" ]; then echo "$DOMAIN"
-            elif [ -n "$domain" ]; then echo "$domain"
-            fi
-          register: r_domain
-          failed_when: false
-          changed_when: false
+        - name: Parse environment variables
+          ansible.builtin.set_fact:
+            r_guid_stdout: "{{ r_env_vars.stdout_lines | select('match', '^GUID=') | first | default('GUID=', true) | regex_replace('^GUID=', '') }}"
+            r_domain_stdout: "{{ r_env_vars.stdout_lines | select('match', '^DOMAIN=') | first | default('DOMAIN=', true) | regex_replace('^DOMAIN=', '') }}"
 
         - name: Set lab facts for use in all modules
           ansible.builtin.set_fact:
-            lab_guid: "{{ showroom_guid | default(r_guid.stdout, true) | default('test-guid', true) }}"
-            lab_domain: "{{ showroom_domain | default(r_domain.stdout, true) | default('example.com', true) }}"
-            registry_url: "registry-{{ showroom_guid | default(r_guid.stdout, true) | default('test-guid', true) }}.{{ showroom_domain | default(r_domain.stdout, true) | default('example.com', true) }}"
+            lab_guid: "{{ showroom_guid | default(r_guid_stdout, true) | default('test-guid', true) }}"
+            lab_domain: "{{ showroom_domain | default(r_domain_stdout, true) | default('example.com', true) }}"
+            registry_url: "registry-{{ showroom_guid | default(r_guid_stdout, true) | default('test-guid', true) }}.{{ showroom_domain | default(r_domain_stdout, true) | default('example.com', true) }}"
 
         - name: Display lab environment
           ansible.builtin.debug:
@@ -126,8 +142,8 @@
                 - DOMAIN: {{ lab_domain }}
                 - Registry: {{ registry_url }}
                 - Namespace: {{ r_namespace.stdout }}
-              {% elif r_guid.stdout | length > 0 and r_domain.stdout | length > 0 %}
-              ✓ Lab environment (from environment variables):
+              {% elif r_guid_stdout | length > 0 and r_domain_stdout | length > 0 %}
+              ✓ Lab environment (from /etc/profile.d/lab.sh):
                 - GUID: {{ lab_guid }}
                 - DOMAIN: {{ lab_domain }}
                 - Registry: {{ registry_url }}
@@ -135,7 +151,7 @@
               ⚠️  WARNING: Lab environment not configured
               → Using placeholder values: GUID={{ lab_guid }}, DOMAIN={{ lab_domain }}
               → E2E tests will likely fail without real infrastructure
-              → Expected: showroom-userdata ConfigMap or GUID/DOMAIN environment variables
+              → Expected: showroom-userdata ConfigMap or GUID/DOMAIN in /etc/profile.d/lab.sh
               {% endif %}
 
     # Pre-flight check: Verify infrastructure exists
@@ -143,9 +159,30 @@
       ansible.builtin.debug:
         msg: "Verifying bootc-vm is accessible before running module tests..."
 
+    - name: Find SSH key for bootc-vm
+      ansible.builtin.shell: |
+        # Try to find the SSH key (setup creates it as /root/.ssh/${GUID}key)
+        if [ -f "/root/.ssh/{{ lab_guid }}key" ]; then
+          echo "/root/.ssh/{{ lab_guid }}key"
+        else
+          # Fallback: find any key that doesn't end in .pub
+          find /root/.ssh/ -type f -name "*key" ! -name "*.pub" 2>/dev/null | head -1 || echo ""
+        fi
+      register: r_ssh_key
+      failed_when: false
+      changed_when: false
+
+    - name: Set SSH key fact
+      ansible.builtin.set_fact:
+        bootc_vm_ssh_key: "{{ r_ssh_key.stdout if r_ssh_key.stdout | length > 0 else '/root/.ssh/' + lab_guid + 'key' }}"
+
+    - name: Display SSH key info
+      ansible.builtin.debug:
+        msg: "Using SSH key: {{ bootc_vm_ssh_key }}"
+
     - name: Check if bootc-vm is accessible
       ansible.builtin.command: >
-        ssh -i /root/.ssh/{{ lab_guid }}key
+        ssh -i {{ bootc_vm_ssh_key }}
         -o StrictHostKeyChecking=no
         -o ConnectTimeout=5
         -o BatchMode=yes
