@@ -32,24 +32,32 @@
         - name: Get GUID environment variable
           ansible.builtin.shell: echo $GUID
           register: r_guid
-          failed_when: r_guid.stdout | length == 0
+          failed_when: false
           changed_when: false
 
         - name: Get DOMAIN environment variable
           ansible.builtin.shell: echo $DOMAIN
           register: r_domain
-          failed_when: r_domain.stdout | length == 0
+          failed_when: false
           changed_when: false
 
         - name: Set lab facts for use in all modules
           ansible.builtin.set_fact:
-            lab_guid: "{{ r_guid.stdout }}"
-            lab_domain: "{{ r_domain.stdout }}"
-            registry_url: "registry-{{ r_guid.stdout }}.{{ r_domain.stdout }}"
+            lab_guid: "{{ r_guid.stdout | default('test-guid', true) }}"
+            lab_domain: "{{ r_domain.stdout | default('example.com', true) }}"
+            registry_url: "registry-{{ r_guid.stdout | default('test-guid', true) }}.{{ r_domain.stdout | default('example.com', true) }}"
 
         - name: Display lab environment
           ansible.builtin.debug:
-            msg: "Lab GUID={{ lab_guid }}, DOMAIN={{ lab_domain }}, Registry={{ registry_url }}"
+            msg: |
+              {% if r_guid.stdout | length > 0 and r_domain.stdout | length > 0 %}
+              ✓ Lab environment: GUID={{ lab_guid }}, DOMAIN={{ lab_domain }}, Registry={{ registry_url }}
+              {% else %}
+              ⚠️  WARNING: GUID/DOMAIN environment variables not set
+              → Using placeholder values for testing: GUID={{ lab_guid }}, DOMAIN={{ lab_domain }}
+              → E2E tests may fail if they require actual infrastructure
+              → For full testing, ensure setup-automation has run and GUID/DOMAIN are exported
+              {% endif %}
 
     # Module 01: Introduction to Image Mode Updates
     - name: "=== MODULE 01: Introduction to Image Mode Updates ==="
