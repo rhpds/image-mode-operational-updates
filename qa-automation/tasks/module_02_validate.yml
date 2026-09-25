@@ -46,7 +46,7 @@
     success_msg: "Containerfile includes bootc container lint"
 
 - name: Module 02 Validation | Verify image exists in local podman images
-  ansible.builtin.shell: podman images --format "{{.Repository}}:{{.Tag}}" | grep "{{ image_tag }}"
+  ansible.builtin.shell: podman images --format "{{ '{{' }}.Repository{{ '}}' }}:{{ '{{' }}.Tag{{ '}}' }}" | grep "{{ image_tag }}"
   register: r_local_image
   failed_when: r_local_image.rc != 0
   changed_when: false

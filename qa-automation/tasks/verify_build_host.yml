@@ -13,7 +13,7 @@
     msg: "Podman version: {{ r_podman_version.stdout }}"
 
 - name: Verify registry container is running
-  ansible.builtin.command: podman ps --filter name=registry --format '{{.Names}}'
+  ansible.builtin.shell: podman ps --filter name=registry --format '{{ "{{" }}.Names{{ "}}" }}'
   register: r_registry_ps
   failed_when: "'registry' not in r_registry_ps.stdout"
   changed_when: false
