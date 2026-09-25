@@ -29,17 +29,50 @@
   tasks:
     - name: Set lab environment facts
       block:
-        - name: Get namespace from environment (Showroom sets this)
-          ansible.builtin.shell: echo $NAMESPACE
+        - name: Detect namespace from multiple sources
+          ansible.builtin.shell: |
+            # Priority order:
+            # 1. Extra var passed to playbook (showroom_namespace)
+            # 2. NAMESPACE environment variable
+            # 3. ServiceAccount namespace file (if running in a pod)
+            # 4. POD_NAMESPACE environment variable
+            # 5. Current oc/kubectl context
+
+            if [ -n "{{ showroom_namespace | default('') }}" ]; then
+              echo "{{ showroom_namespace | default('') }}"
+            elif [ -n "$NAMESPACE" ]; then
+              echo "$NAMESPACE"
+            elif [ -f /var/run/secrets/kubernetes.io/serviceaccount/namespace ]; then
+              cat /var/run/secrets/kubernetes.io/serviceaccount/namespace
+            elif [ -n "$POD_NAMESPACE" ]; then
+              echo "$POD_NAMESPACE"
+            else
+              # Try to get from current context
+              oc project -q 2>/dev/null || kubectl config view --minify -o jsonpath='{..namespace}' 2>/dev/null || echo ""
+            fi
           register: r_namespace
           failed_when: false
           changed_when: false
           delegate_to: localhost
           become: false
 
-        - name: Read showroom-userdata ConfigMap (if in Showroom environment)
+        - name: Display detected namespace
+          ansible.builtin.debug:
+            msg: |
+              {% if r_namespace.stdout | length > 0 %}
+              ✓ Namespace detected: {{ r_namespace.stdout }}
+              → Will attempt to read showroom-userdata ConfigMap
+              {% else %}
+              ⚠️  No namespace detected
+              → Showroom ConfigMap will not be read
+              → Falling back to environment variables
+              {% endif %}
+
+        - name: Read showroom-userdata ConfigMap
           ansible.builtin.shell: |
-            kubectl get configmap showroom-userdata -n {{ r_namespace.stdout }} -o json 2>/dev/null || echo '{}'
+            oc get configmap showroom-userdata -n {{ r_namespace.stdout }} -o json 2>/dev/null || \
+            kubectl get configmap showroom-userdata -n {{ r_namespace.stdout }} -o json 2>/dev/null || \
+            echo '{}'
           register: r_configmap
           failed_when: false
           changed_when: false
@@ -137,6 +170,30 @@
     - name: Set infrastructure_ready fact
       ansible.builtin.set_fact:
         infrastructure_ready: "{{ r_preflight.rc == 0 }}"
+
+    - name: Fail if infrastructure not ready
+      ansible.builtin.fail:
+        msg: |
+          E2E TEST FAILED - Infrastructure not ready
+
+          Bootc VM is not accessible. E2E tests cannot proceed.
+
+          Requirements:
+            ✗ setup-automation/setup.yml has NOT completed
+            ✗ bootc-vm libvirt guest is not running
+            ✗ SSH access to core@bootc-vm is not working
+
+          Resolution:
+            1. Run: cd setup-automation && ansible-playbook setup.yml
+            2. Wait for setup to complete (check /tmp/progress.log on build host)
+            3. Verify: virsh list --all | grep bootc-vm
+            4. Re-run: ansible-playbook e2e.yml
+
+          Current environment:
+            - GUID: {{ lab_guid }}
+            - DOMAIN: {{ lab_domain }}
+            - Build host: Connected (rhel)
+      when: not (infrastructure_ready | bool)
 
     # Module 01: Introduction to Image Mode Updates
     - name: "=== MODULE 01: Introduction to Image Mode Updates ==="
