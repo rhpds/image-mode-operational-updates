@@ -1,0 +1,155 @@
+---
+# Module 04 Solve: Roll Back a Failed Update
+# Executes rollback to previous deployment, manually reboots system
+# WARNING: This task includes reboot handling - system will reboot
+
+- name: Module 04 Solve | Log start
+  ansible.builtin.debug:
+    msg: "Module 04 solve: Starting rollback operation..."
+
+- name: Module 04 Solve | Get pre-rollback bootc status
+  ansible.builtin.command: >
+    ssh -i /root/.ssh/{{ lab_guid }}key
+    -o StrictHostKeyChecking=no
+    core@bootc-vm
+    sudo bootc status
+  register: r_bootc_status_before
+  failed_when: r_bootc_status_before.rc != 0
+  changed_when: false
+
+- name: Module 04 Solve | Display pre-rollback status
+  ansible.builtin.debug:
+    msg: "{{ r_bootc_status_before.stdout_lines }}"
+
+- name: Module 04 Solve | Get pre-rollback version
+  ansible.builtin.command: >
+    ssh -i /root/.ssh/{{ lab_guid }}key
+    -o StrictHostKeyChecking=no
+    core@bootc-vm
+    cat /etc/lab-image-version
+  register: r_version_before
+  changed_when: false
+
+- name: Module 04 Solve | Display current version
+  ansible.builtin.debug:
+    msg: "Current version before rollback: {{ r_version_before.stdout.strip() }}"
+
+- name: Module 04 Solve | Execute bootc rollback
+  ansible.builtin.command: >
+    ssh -i /root/.ssh/{{ lab_guid }}key
+    -o StrictHostKeyChecking=no
+    core@bootc-vm
+    sudo bootc rollback
+  register: r_bootc_rollback
+  failed_when: r_bootc_rollback.rc != 0
+
+- name: Module 04 Solve | Display rollback command output
+  ansible.builtin.debug:
+    msg: "{{ r_bootc_rollback.stdout_lines }}"
+
+- name: Module 04 Solve | Get post-rollback-command bootc status
+  ansible.builtin.command: >
+    ssh -i /root/.ssh/{{ lab_guid }}key
+    -o StrictHostKeyChecking=no
+    core@bootc-vm
+    sudo bootc status
+  register: r_bootc_status_staged
+  failed_when: r_bootc_status_staged.rc != 0
+  changed_when: false
+
+- name: Module 04 Solve | Display staged rollback status
+  ansible.builtin.debug:
+    msg: "{{ r_bootc_status_staged.stdout_lines }}"
+
+- name: Module 04 Solve | Reboot to apply rollback
+  ansible.builtin.command: >
+    ssh -i /root/.ssh/{{ lab_guid }}key
+    -o StrictHostKeyChecking=no
+    core@bootc-vm
+    sudo systemctl reboot
+  register: r_reboot_trigger
+  failed_when: false
+  async: 30
+  poll: 0
+
+- name: Module 04 Solve | Wait for system to start rebooting
+  ansible.builtin.pause:
+    seconds: 10
+    prompt: "Waiting for system to begin reboot..."
+
+- name: Module 04 Solve | Wait for SSH to become unavailable (reboot started)
+  ansible.builtin.wait_for:
+    host: bootc-vm
+    port: 22
+    state: stopped
+    timeout: 120
+  delegate_to: localhost
+  ignore_errors: true
+
+- name: Module 04 Solve | Wait for SSH to become available (reboot complete)
+  ansible.builtin.wait_for:
+    host: bootc-vm
+    port: 22
+    state: started
+    delay: 10
+    timeout: 300
+  delegate_to: localhost
+
+- name: Module 04 Solve | Wait for system to stabilize after reboot
+  ansible.builtin.pause:
+    seconds: 10
+
+- name: Module 04 Solve | Verify system is back online
+  ansible.builtin.command: >
+    ssh -i /root/.ssh/{{ lab_guid }}key
+    -o StrictHostKeyChecking=no
+    -o ConnectTimeout=10
+    core@bootc-vm
+    true
+  register: r_ssh_test
+  retries: 12
+  delay: 5
+  until: r_ssh_test.rc == 0
+
+- name: Module 04 Solve | Get post-reboot bootc status
+  ansible.builtin.command: >
+    ssh -i /root/.ssh/{{ lab_guid }}key
+    -o StrictHostKeyChecking=no
+    core@bootc-vm
+    sudo bootc status
+  register: r_bootc_status_after
+  failed_when: r_bootc_status_after.rc != 0
+  changed_when: false
+
+- name: Module 04 Solve | Display post-reboot bootc status
+  ansible.builtin.debug:
+    msg: "{{ r_bootc_status_after.stdout_lines }}"
+
+- name: Module 04 Solve | Get post-reboot version
+  ansible.builtin.command: >
+    ssh -i /root/.ssh/{{ lab_guid }}key
+    -o StrictHostKeyChecking=no
+    core@bootc-vm
+    cat /etc/lab-image-version
+  register: r_version_after
+  changed_when: false
+
+- name: Module 04 Solve | Verify tmux is NOT installed (back to version 1.0)
+  ansible.builtin.command: >
+    ssh -i /root/.ssh/{{ lab_guid }}key
+    -o StrictHostKeyChecking=no
+    core@bootc-vm
+    command -v tmux
+  register: r_tmux_check
+  failed_when: r_tmux_check.rc == 0
+  changed_when: false
+
+- name: Module 04 Solve | Display results
+  ansible.builtin.debug:
+    msg:
+      - "Version after rollback: {{ r_version_after.stdout.strip() }}"
+      - "tmux correctly absent (not in version 1.0)"
+
+- name: Module 04 Solve | Log completion
+  ansible.builtin.debug:
+    msg: "Module 04 solve: Completed successfully - System rolled back to version 1.0"
