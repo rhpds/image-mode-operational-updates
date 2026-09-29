@@ -109,11 +109,11 @@ command -v tmux
 
 [NOTE]
 ====
-*From: Nate (Senior Sysadmin)*
+*From: Grace (Senior Sysadmin)*
 
 That's the whole point of image mode updates: you published one artifact, the host pulled it and rebooted into it, and the old image is still sitting right there as a rollback target. Which is handy, because sometimes an update doesn't go the way you hoped...
 
--Nate
+-Grace
 ====
 
 Click *Next* to handle an update that needs to be undone.
