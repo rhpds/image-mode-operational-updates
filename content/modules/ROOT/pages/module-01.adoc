@@ -6,18 +6,18 @@ Before you change anything, get your bearings. In this module you'll confirm the
 
 You're a systems administrator at *Super-Business*. The team has standardized a fleet of RHEL hosts on *image mode* so that every machine runs a known, versioned operating-system image instead of a pile of individually-patched packages.
 
-[quote, Manager Scott]
+[quote, Manager Bill]
 ____
 Team! I heard image mode means updates are "just containers" now, so this should be trivial. Push out the new version, keep everything running, and if it breaks... un-break it. You're the best!
 ____
 
 [NOTE]
 ====
-*From: Nate (Senior Sysadmin)*
+*From: Grace (Senior Sysadmin)*
 
-Scott's not wrong, for once — image mode updates really are clean once you know the moves. Three of them: *build* a new image, let the host *fetch and apply* it, and *roll back* if it misbehaves. We'll do each one. First, let's look at what the host is running right now so we have a baseline to compare against.
+Bill's not wrong, for once — image mode updates really are clean once you know the moves. Three of them: *build* a new image, let the host *fetch and apply* it, and *roll back* if it misbehaves. We'll do each one. First, let's look at what the host is running right now so we have a baseline to compare against.
 
--Nate
+-Grace
 ====
 
 == Inspect the Current Image
