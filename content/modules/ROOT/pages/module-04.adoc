@@ -11,18 +11,18 @@ Not every update goes to plan. Image mode's built-in safety net is that the prev
 
 The version `2.0` update is live across the fleet, and the reports start coming in.
 
-[quote, Manager Scott]
+[quote, Manager Bill]
 ____
 Uhh, team? Since that update, something feels *off*. I can't explain it exactly but I need the old version back RIGHT NOW. Undo it! Can you undo it? Please tell me you can undo it.
 ____
 
 [NOTE]
 ====
-*From: Nate (Senior Sysadmin)*
+*From: Grace (Senior Sysadmin)*
 
 Breathe. This is exactly the situation image mode is built for. The previous image — version `1.0` — is still sitting on disk as the rollback target. We don't rebuild anything, we don't restore from backup. We tell bootc to boot the previous deployment and reboot. Thirty seconds of downtime and we're back to a known-good state.
 
--Nate
+-Grace
 ====
 
 == Confirm the Current State
@@ -88,7 +88,7 @@ command -v tmux || echo "tmux is gone — back to version 1.0"
 
 The marker reads `1.0` and `tmux` (added in version `2.0`) is no longer present. You're back to the known-good state.
 
-[quote, Manager Scott]
+[quote, Manager Bill]
 ____
 See?! I *knew* it would be fine. Great work, team. I'll let leadership know I resolved it personally.
 ____
@@ -104,11 +104,11 @@ You've now driven the full image mode update lifecycle:
 
 [NOTE]
 ====
-*From: Nate (Senior Sysadmin)*
+*From: Grace (Senior Sysadmin)*
 
 That's the image mode operating model in a nutshell: updates are whole images, delivery is automatic, and rollback is always one command away. Build it, ship it, and never be afraid to hit undo.
 
--Nate
+-Grace
 ====
 
 Congratulations — you've completed the lab!
