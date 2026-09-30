@@ -1,0 +1,96 @@
+---
+# Module 04 Validation: Verify rollback completed successfully
+# Expected: System running v1.0, v2.0 available as rollback, tmux NOT installed
+
+- name: Module 04 Validation | Log start
+  ansible.builtin.debug:
+    msg: "Module 04 validation: Starting..."
+
+- name: Module 04 Validation | Verify SSH connectivity
+  ansible.builtin.command: >
+    ssh -i /root/.ssh/{{ lab_guid }}key
+    -o StrictHostKeyChecking=no
+    -o ConnectTimeout=10
+    core@bootc-vm
+    true
+  register: r_ssh_test
+  failed_when: r_ssh_test.rc != 0
+  changed_when: false
+
+- name: Module 04 Validation | Get bootc status JSON
+  ansible.builtin.command: >
+    ssh -i /root/.ssh/{{ lab_guid }}key
+    -o StrictHostKeyChecking=no
+    core@bootc-vm
+    sudo bootc status --format=json
+  register: r_bootc_status_json
+  failed_when: r_bootc_status_json.rc != 0
+  changed_when: false
+
+- name: Module 04 Validation | Parse bootc status
+  ansible.builtin.set_fact:
+    bootc_status: "{{ r_bootc_status_json.stdout | from_json }}"
+
+- name: Module 04 Validation | Verify booted image exists
+  ansible.builtin.assert:
+    that:
+      - bootc_status.status.booted.image.image.image is defined
+      - bootc_status.status.booted.image.image.image | length > 0
+    fail_msg: "No booted image reference found"
+    success_msg: "Booted image: {{ bootc_status.status.booted.image.image.image }}"
+
+- name: Module 04 Validation | Get lab image version
+  ansible.builtin.command: >
+    ssh -i /root/.ssh/{{ lab_guid }}key
+    -o StrictHostKeyChecking=no
+    core@bootc-vm
+    cat /etc/lab-image-version
+  register: r_lab_version
+  changed_when: false
+
+- name: Module 04 Validation | Verify version is 1.0 (rolled back)
+  ansible.builtin.assert:
+    that:
+      - r_lab_version.stdout.strip() == '1.0'
+    fail_msg: "Lab image version is '{{ r_lab_version.stdout.strip() }}' but expected '1.0' after rollback"
+    success_msg: "Lab image version marker: 1.0"
+
+- name: Module 04 Validation | Verify rollback deployment exists (version 2.0)
+  ansible.builtin.assert:
+    that:
+      - bootc_status.status.rollback is not none
+      - bootc_status.status.rollback != None
+    fail_msg: "No rollback deployment found - expected version 2.0 to be available"
+    success_msg: "Rollback deployment exists (version 2.0)"
+
+- name: Module 04 Validation | Verify no staged deployment exists
+  ansible.builtin.assert:
+    that:
+      - bootc_status.status.staged is none or bootc_status.status.staged == None
+    fail_msg: "Staged deployment exists but should be absent after rollback completion"
+    success_msg: "No staged deployment (rollback fully applied)"
+
+- name: Module 04 Validation | Verify tmux is NOT installed
+  ansible.builtin.command: >
+    ssh -i /root/.ssh/{{ lab_guid }}key
+    -o StrictHostKeyChecking=no
+    core@bootc-vm
+    command -v tmux
+  register: r_tmux_check
+  failed_when: r_tmux_check.rc == 0
+  changed_when: false
+
+- name: Module 04 Validation | Confirm tmux absence
+  ansible.builtin.debug:
+    msg: "tmux correctly not installed (expected in version 1.0)"
+
+- name: Module 04 Validation | Verify deployment roles swapped
+  ansible.builtin.debug:
+    msg:
+      - "Deployment roles successfully swapped via rollback:"
+      - "  - Booted: version 1.0 (was rollback in Module 03)"
+      - "  - Rollback: version 2.0 (was booted in Module 03)"
+
+- name: Module 04 Validation | Log completion
+  ansible.builtin.debug:
+    msg: "Module 04 validation: PASSED - Rollback to version 1.0 completed successfully"

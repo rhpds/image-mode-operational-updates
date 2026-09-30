@@ -1,0 +1,105 @@
+---
+# Build host verification tasks for Module 1 readiness
+# Verifies: podman, registry container, examples files, env vars
+
+- name: Verify podman is installed
+  ansible.builtin.command: podman --version
+  register: r_podman_version
+  failed_when: r_podman_version.rc != 0
+  changed_when: false
+
+- name: Display podman version
+  ansible.builtin.debug:
+    msg: "Podman version: {{ r_podman_version.stdout }}"
+
+- name: Check if registry container exists (any state)
+  ansible.builtin.shell: podman ps -a --filter name=registry --format '{{ "{{" }}.Names{{ "}}" }}'
+  register: r_registry_exists
+  failed_when: false
+  changed_when: false
+
+- name: Check if registry container is running
+  ansible.builtin.shell: podman ps --filter name=registry --format '{{ "{{" }}.Names{{ "}}" }}'
+  register: r_registry_running
+  failed_when: false
+  changed_when: false
+
+- name: Registry status - Provide diagnostics
+  ansible.builtin.debug:
+    msg: |
+      {% if 'registry' not in r_registry_exists.stdout %}
+      ⚠️  Registry container does not exist (setup not run yet - this is expected in CI/CD)
+      → If needed, run: cd setup-automation && ansible-playbook setup.yml
+      {% elif 'registry' not in r_registry_running.stdout %}
+      ⚠️  WARNING: Registry container exists but is stopped
+      → This may cause e2e tests to fail
+      → Action: Start it with: podman start registry
+      {% else %}
+      ✓ Registry container is running
+      {% endif %}
+
+- name: Check examples directory exists
+  ansible.builtin.stat:
+    path: /root/examples/Containerfile
+  register: r_examples_containerfile
+  failed_when: false
+
+- name: Check examples/config.toml exists
+  ansible.builtin.stat:
+    path: /root/examples/config.toml
+  register: r_examples_config
+  failed_when: false
+
+- name: Examples directory status
+  ansible.builtin.debug:
+    msg: |
+      {% if r_examples_containerfile.stat is defined and r_examples_containerfile.stat.exists %}
+      ✓ Examples directory found: /root/examples/Containerfile
+      {% else %}
+      ⚠️  Examples directory not found (setup not run yet - expected in CI/CD)
+      → Path: /root/examples/Containerfile
+      → If needed, run: cd setup-automation && ansible-playbook setup.yml
+      {% endif %}
+      {% if r_examples_config.stat is defined and r_examples_config.stat.exists %}
+      ✓ Examples config found: /root/examples/config.toml
+      {% elif r_examples_containerfile.stat is defined and r_examples_containerfile.stat.exists %}
+      ⚠️  WARNING: config.toml is missing from examples directory
+      {% endif %}
+
+- name: Check GUID environment variable (try both uppercase and lowercase)
+  ansible.builtin.shell: |
+    # Try uppercase first, then lowercase
+    if [ -n "$GUID" ]; then echo "$GUID"
+    elif [ -n "$guid" ]; then echo "$guid"
+    fi
+  register: r_guid
+  failed_when: false
+  changed_when: false
+
+- name: Check DOMAIN environment variable (try both uppercase and lowercase)
+  ansible.builtin.shell: |
+    # Try uppercase first, then lowercase
+    if [ -n "$DOMAIN" ]; then echo "$DOMAIN"
+    elif [ -n "$domain" ]; then echo "$domain"
+    fi
+  register: r_domain
+  failed_when: false
+  changed_when: false
+
+- name: Display environment variables
+  ansible.builtin.debug:
+    msg: |
+      {% if r_guid.stdout | length > 0 and r_domain.stdout | length > 0 %}
+      ✓ Environment variables set: GUID={{ r_guid.stdout }}, DOMAIN={{ r_domain.stdout }}
+      {% else %}
+      ⚠️  Environment variables not set (setup not run yet - expected in CI/CD)
+      → GUID={{ r_guid.stdout if r_guid.stdout | length > 0 else 'not set' }}
+      → DOMAIN={{ r_domain.stdout if r_domain.stdout | length > 0 else 'not set' }}
+      → If needed, run: cd setup-automation && ansible-playbook setup.yml
+      {% endif %}
+
+- name: Set registry facts for subsequent checks
+  ansible.builtin.set_fact:
+    lab_guid: "{{ r_guid.stdout | default('unknown', true) }}"
+    lab_domain: "{{ r_domain.stdout | default('unknown', true) }}"
+    registry_url: "registry-{{ r_guid.stdout | default('unknown', true) }}.{{ r_domain.stdout | default('unknown', true) }}"

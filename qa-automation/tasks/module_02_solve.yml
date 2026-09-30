@@ -1,0 +1,60 @@
+---
+# Module 02 Solve: Build and Push an Updated Image
+# Builds bootc container image v2.0 and pushes to registry
+
+- name: Module 02 Solve | Log start
+  ansible.builtin.debug:
+    msg: "Module 02 solve: Starting image build and push..."
+
+- name: Module 02 Solve | Set registry facts
+  ansible.builtin.set_fact:
+    registry_url: "registry-{{ lab_guid }}.{{ lab_domain }}"
+    image_tag: "registry-{{ lab_guid }}.{{ lab_domain }}/base"
+    containerfile_path: "/root/examples/Containerfile"
+
+- name: Module 02 Solve | Verify Containerfile exists
+  ansible.builtin.stat:
+    path: "{{ containerfile_path }}"
+  register: r_containerfile
+  failed_when: not r_containerfile.stat.exists
+
+- name: Module 02 Solve | Display Containerfile contents
+  ansible.builtin.command: cat {{ containerfile_path }}
+  register: r_containerfile_contents
+  changed_when: false
+
+- name: Module 02 Solve | Show Containerfile
+  ansible.builtin.debug:
+    msg: "{{ r_containerfile_contents.stdout_lines }}"
+
+- name: Module 02 Solve | Build container image with podman
+  ansible.builtin.command: >
+    podman build
+    --file {{ containerfile_path }}
+    --tag {{ image_tag }}
+    /root/examples
+  register: r_podman_build
+  failed_when: r_podman_build.rc != 0
+
+- name: Module 02 Solve | Display build output
+  ansible.builtin.debug:
+    msg: "Image built successfully: {{ image_tag }}"
+
+- name: Module 02 Solve | Verify image in local podman images
+  ansible.builtin.shell: podman images | grep base
+  register: r_podman_images
+  failed_when: r_podman_images.rc != 0
+  changed_when: false
+
+- name: Module 02 Solve | Display podman images
+  ansible.builtin.debug:
+    msg: "{{ r_podman_images.stdout_lines }}"
+
+- name: Module 02 Solve | Push image to registry
+  ansible.builtin.command: podman push {{ image_tag }}
+  register: r_podman_push
+  failed_when: r_podman_push.rc != 0
+
+- name: Module 02 Solve | Log completion
+  ansible.builtin.debug:
+    msg: "Module 02 solve: Completed successfully - Image version 2.0 built and pushed to {{ registry_url }}"

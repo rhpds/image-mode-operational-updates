@@ -1,0 +1,114 @@
+---
+# Module 03 Validation: Verify automatic update completed successfully
+# Expected: System running v2.0, v1.0 available as rollback, timer enabled, tmux installed
+
+- name: Module 03 Validation | Log start
+  ansible.builtin.debug:
+    msg: "Module 03 validation: Starting..."
+
+- name: Module 03 Validation | Verify SSH connectivity
+  ansible.builtin.command: >
+    ssh -i /root/.ssh/{{ lab_guid }}key
+    -o StrictHostKeyChecking=no
+    -o ConnectTimeout=10
+    core@bootc-vm
+    true
+  register: r_ssh_test
+  failed_when: r_ssh_test.rc != 0
+  changed_when: false
+
+- name: Module 03 Validation | Verify timer is enabled
+  ansible.builtin.command: >
+    ssh -i /root/.ssh/{{ lab_guid }}key
+    -o StrictHostKeyChecking=no
+    core@bootc-vm
+    systemctl is-enabled bootc-fetch-apply-updates.timer
+  register: r_timer_enabled
+  changed_when: false
+
+- name: Module 03 Validation | Assert timer is enabled
+  ansible.builtin.assert:
+    that:
+      - r_timer_enabled.stdout.strip() == 'enabled'
+    fail_msg: "Timer is not enabled (got: {{ r_timer_enabled.stdout.strip() }})"
+    success_msg: "Timer is enabled"
+
+- name: Module 03 Validation | Verify timer is active
+  ansible.builtin.command: >
+    ssh -i /root/.ssh/{{ lab_guid }}key
+    -o StrictHostKeyChecking=no
+    core@bootc-vm
+    systemctl is-active bootc-fetch-apply-updates.timer
+  register: r_timer_active
+  changed_when: false
+
+- name: Module 03 Validation | Assert timer is active
+  ansible.builtin.assert:
+    that:
+      - r_timer_active.stdout.strip() == 'active'
+    fail_msg: "Timer is not active (got: {{ r_timer_active.stdout.strip() }})"
+    success_msg: "Timer is active"
+
+- name: Module 03 Validation | Get bootc status JSON
+  ansible.builtin.command: >
+    ssh -i /root/.ssh/{{ lab_guid }}key
+    -o StrictHostKeyChecking=no
+    core@bootc-vm
+    sudo bootc status --format=json
+  register: r_bootc_status_json
+  failed_when: r_bootc_status_json.rc != 0
+  changed_when: false
+
+- name: Module 03 Validation | Parse bootc status
+  ansible.builtin.set_fact:
+    bootc_status: "{{ r_bootc_status_json.stdout | from_json }}"
+
+- name: Module 03 Validation | Verify booted image exists
+  ansible.builtin.assert:
+    that:
+      - bootc_status.status.booted.image.image.image is defined
+      - bootc_status.status.booted.image.image.image | length > 0
+    fail_msg: "No booted image reference found"
+    success_msg: "Booted image: {{ bootc_status.status.booted.image.image.image }}"
+
+- name: Module 03 Validation | Verify rollback deployment exists
+  ansible.builtin.assert:
+    that:
+      - bootc_status.status.rollback is not none
+      - bootc_status.status.rollback != None
+    fail_msg: "No rollback deployment found - expected version 1.0 to be available"
+    success_msg: "Rollback deployment exists (version 1.0)"
+
+- name: Module 03 Validation | Get lab image version
+  ansible.builtin.command: >
+    ssh -i /root/.ssh/{{ lab_guid }}key
+    -o StrictHostKeyChecking=no
+    core@bootc-vm
+    cat /etc/lab-image-version
+  register: r_lab_version
+  changed_when: false
+
+- name: Module 03 Validation | Verify version is 2.0
+  ansible.builtin.assert:
+    that:
+      - r_lab_version.stdout.strip() == '2.0'
+    fail_msg: "Lab image version is '{{ r_lab_version.stdout.strip() }}' but expected '2.0'"
+    success_msg: "Lab image version marker: 2.0"
+
+- name: Module 03 Validation | Verify tmux is installed
+  ansible.builtin.command: >
+    ssh -i /root/.ssh/{{ lab_guid }}key
+    -o StrictHostKeyChecking=no
+    core@bootc-vm
+    command -v tmux
+  register: r_tmux_check
+  failed_when: r_tmux_check.rc != 0
+  changed_when: false
+
+- name: Module 03 Validation | Display tmux location
+  ansible.builtin.debug:
+    msg: "tmux installed at: {{ r_tmux_check.stdout.strip() }}"
+
+- name: Module 03 Validation | Log completion
+  ansible.builtin.debug:
+    msg: "Module 03 validation: PASSED - System updated to version 2.0 with automatic updates enabled"

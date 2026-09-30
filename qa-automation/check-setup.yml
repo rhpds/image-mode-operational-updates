@@ -1,0 +1,135 @@
+---
+# Quick playbook to check if setup ran and view logs
+
+- name: Build inventory
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Add bastion host (build host)
+      ansible.builtin.add_host:
+        name: "{{ lookup('ansible.builtin.env', 'BASTION_HOST') }}"
+        ansible_ssh_host: "{{ lookup('ansible.builtin.env', 'BASTION_HOST') }}"
+        ansible_ssh_port: "{{ lookup('ansible.builtin.env', 'BASTION_PORT') }}"
+        ansible_ssh_user: "{{ lookup('ansible.builtin.env', 'BASTION_USER') }}"
+        ansible_ssh_pass: "{{ lookup('ansible.builtin.env', 'BASTION_PASSWORD') }}"
+        groups: build_host
+
+- name: Check Setup Status
+  hosts: all:!localhost
+  gather_facts: false
+  become: true
+  tasks:
+    - name: Read setup-rhel.log (main setup log)
+      ansible.builtin.shell: |
+        if [ -f /tmp/setup-scripts/setup-rhel.log ]; then
+          cat /tmp/setup-scripts/setup-rhel.log
+        else
+          echo "⚠️  Setup log not found at /tmp/setup-scripts/setup-rhel.log"
+          echo ""
+          echo "Checking alternate locations:"
+          ls -la /tmp/setup-script* /tmp/*setup* 2>/dev/null || echo "No setup logs found"
+        fi
+      register: r_setup_log
+      changed_when: false
+
+    - name: Analyze setup log for completion
+      ansible.builtin.set_fact:
+        setup_completed: "{{ 'Image-mode operational-updates lab setup complete' in r_setup_log.stdout or 'setup complete' in r_setup_log.stdout | lower }}"
+        setup_failed: "{{ 'FATAL' in r_setup_log.stdout or 'error' in r_setup_log.stdout | lower }}"
+
+    - name: Display setup status
+      ansible.builtin.debug:
+        msg: |
+          === SETUP LOG ANALYSIS ===
+
+          {% if setup_completed %}
+          ✓ SETUP COMPLETED SUCCESSFULLY
+          → Found completion marker in setup log
+          {% elif setup_failed %}
+          ✗ SETUP FAILED
+          → Found error/FATAL markers in setup log
+          → Check log details below for failure point
+          {% else %}
+          ⚠️  SETUP STATUS UNKNOWN
+          → No clear completion or failure marker found
+          → Setup may still be running or incomplete
+          {% endif %}
+
+    - name: Display last 100 lines of setup log
+      ansible.builtin.debug:
+        msg: "{{ r_setup_log.stdout_lines[-100:] }}"
+
+    - name: Check /tmp/progress.log if it exists
+      ansible.builtin.shell: |
+        if [ -f /tmp/progress.log ]; then
+          echo "=== Last 50 lines of /tmp/progress.log ==="
+          tail -50 /tmp/progress.log
+        else
+          echo "⚠️  /tmp/progress.log not found"
+        fi
+      register: r_progress_log
+      changed_when: false
+
+    - name: Display progress log
+      ansible.builtin.debug:
+        msg: "{{ r_progress_log.stdout_lines }}"
+
+    - name: Check if bootc-vm exists
+      ansible.builtin.command: virsh list --all
+      register: r_virsh
+      failed_when: false
+      changed_when: false
+
+    - name: Display VM status
+      ansible.builtin.debug:
+        msg: "{{ r_virsh.stdout_lines }}"
+
+    - name: Check if registry container is running
+      ansible.builtin.shell: podman ps -a --filter name=registry
+      register: r_registry
+      failed_when: false
+      changed_when: false
+
+    - name: Display registry status
+      ansible.builtin.debug:
+        msg: "{{ r_registry.stdout_lines }}"
+
+    - name: Check if SSH key exists
+      ansible.builtin.shell: |
+        echo "=== Checking SSH keys ==="
+        ls -lh /root/.ssh/*key* 2>/dev/null || echo "No SSH keys found in /root/.ssh/"
+      register: r_ssh_keys
+      changed_when: false
+
+    - name: Display SSH keys
+      ansible.builtin.debug:
+        msg: "{{ r_ssh_keys.stdout_lines }}"
+
+    - name: Check if examples directory exists
+      ansible.builtin.shell: |
+        if [ -d /root/examples ]; then
+          echo "✓ /root/examples exists"
+          ls -lh /root/examples/
+        else
+          echo "⚠️  /root/examples not found"
+        fi
+      register: r_examples
+      changed_when: false
+
+    - name: Display examples directory
+      ansible.builtin.debug:
+        msg: "{{ r_examples.stdout_lines }}"
+
+    - name: Summary
+      ansible.builtin.debug:
+        msg: |
+          === SETUP STATUS SUMMARY ===
+
+          Check the output above to determine if setup completed:
+
+          Expected if setup completed successfully:
+            ✓ /tmp/progress.log exists with "setup complete" message
+            ✓ virsh shows bootc-vm in running state
+            ✓ podman shows registry container running
+            ✓ SSH key exists at /root/.ssh/<guid>key
+            ✓ /root/examples/ directory exists with Containerfile

@@ -1,0 +1,9 @@
+---
+lab:
+  name: "Managing Updates for RHEL Image Mode Hosts"
+  shortname: "image-mode-operational-updates"
+  maintainer: "nlager@redhat.com"
+  description: "In this lab, you will learn how to manage updates for your image mode hosts. You will start with a running bootc host, and the infrastructure to build a new bootc image, push it, and manage its automatic updates via the systemd bootc update service."
+  git_ref:
+    production: main
+    development: main
