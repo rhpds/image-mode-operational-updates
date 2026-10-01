@@ -3,3 +3,4 @@
 * xref:module-02.adoc[Build and Push an Updated Image]
 * xref:module-03.adoc[Configure Automatic Updates]
 * xref:module-04.adoc[Roll Back a Failed Update]
+* xref:conclusion.adoc[Conclusion and Next Steps]
