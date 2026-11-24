@@ -1,0 +1,74 @@
+= Conclusion and Next Steps
+
+You've driven the full image mode update lifecycle end to end.
+
+[quote, Manager Bill]
+____
+Outstanding work, team! I always knew we had it in us. I'll let leadership know I personally oversaw the entire rollback operation. Great collaboration, everyone!
+____
+
+[NOTE]
+====
+*From: Grace (Senior Sysadmin)*
+
+Ignore Bill. You did this. You built the update, shipped it, watched the host apply it automatically, and recovered from a bad deployment in under 30 seconds. That's the image mode operating model — and now you know how to run it.
+
+-Grace
+====
+
+== What You've Learned
+
+Across four modules you covered the complete operational update lifecycle for a RHEL image mode host:
+
+* *Module 1 — Introduction to Image Mode Updates:* You confirmed the host is running in image mode, inspected the booted image and version marker with `bootc status`, and understood why image-based updates differ from in-place package patching. Updates are whole, versioned artifacts — not incremental changes to a running system.
+
+* *Module 2 — Build and Push an Updated Image:* You built an updated bootc image from a Containerfile using Podman and pushed it to a container registry. The registry is the delivery mechanism: nothing reaches a host until an image lands there.
+
+* *Module 3 — Configure Automatic Updates:* You enabled the `bootc-fetch-apply-updates` systemd timer and watched it fetch and apply the updated image without any manual intervention. Enabling the timer turns image delivery into a hands-off, scheduled operation across your fleet.
+
+* *Module 4 — Roll Back a Failed Update:* You rolled the host back to its previous image with a single `bootc rollback` and confirmed the prior deployment was booted again. The previous image stays on disk after every update, making recovery predictable and fast.
+
+The three skills at the center of this lab:
+
+* Build a new bootc image and push it to a registry when you want to update the OS.
+* Enable the `bootc-fetch-apply-updates` timer to automate image delivery on a schedule.
+* Use `bootc rollback` to recover from a problem — no rebuilds, no backups, one command.
+
+== References
+
+=== RHEL Image Mode
+
+* https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/10/html-single/using_image_mode_for_rhel_to_build_deploy_and_manage_operating_systems/index[Using image mode for RHEL to build, deploy, and manage operating systems (Red Hat Docs)]
+* https://containers.github.io/bootc/[bootc upstream documentation]
+
+=== bootc CLI
+
+* `bootc status` — inspect the booted, staged, and rollback deployments
+* `bootc upgrade` — fetch and stage the latest image from the tracked registry reference
+* `bootc rollback` — activate the previous deployment on next boot
+* `bootc-fetch-apply-updates.timer` — the built-in systemd timer for scheduled, automatic updates
+* `bootc-fetch-apply-updates.service` — the service the timer triggers to fetch, stage, and reboot
+
+=== Systemd Timers
+
+* https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/10/html/managing_system_services_and_timers/index[Managing system services and timers on RHEL (Red Hat Docs)]
+* `systemctl enable --now` — enable and start a unit in one step
+* `systemctl is-enabled` / `systemctl is-active` — verify timer state
+* `systemd.timer(5)` man page — full `OnCalendar` and `RandomizedDelaySec` syntax
+
+=== Podman and Container Builds
+
+* https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/10/html/building_running_and_managing_containers/index[Building, running, and managing containers on RHEL (Red Hat Docs)]
+* https://docs.podman.io/en/latest/[Podman documentation]
+* `podman build` — build a bootc image from a Containerfile
+* `podman push` — publish an image to a registry
+* `bootc container lint` — validate a Containerfile produces a bootc-compatible image
+
+== Next Steps
+
+If you want to go further with image mode operations, these are natural follow-on resources:
+
+* https://catalog.demo.redhat.com/catalog?item=zt-rhelbu.zt-image-mode-day2.prod[Day 2 operations with image mode for RHEL (RHDP catalog)] — broader coverage of day-two fleet management for bootc hosts.
+* https://catalog.demo.redhat.com/catalog?item=zt-rhelbu.zt-image-mode-basics.prod[Introduction to image mode for RHEL (RHDP catalog)] — first-principles lab on building and customizing bootc base images from scratch.
+* https://catalog.demo.redhat.com/catalog?item=zt-rhelbu.zt-satellite-image-mode.prod[Red Hat Satellite Image Mode (RHDP catalog)] — learn how Red Hat Satellite manages bootc image delivery and update scheduling at fleet scale.
+* *Practice:* Apply the same pattern in your own environment — Containerfile → `podman build` → `podman push` → enable the timer or run `bootc upgrade` manually → `bootc rollback` if needed. The workflow is identical whether you're managing one host or a thousand.
